@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "..\\..\\CPLN-675"
+		}
+	],
+	"settings": {
+		"python.pythonPath": "C:\\ProgramData\\Miniconda3\\envs\\CPLN-675\\python.exe",
+		"python.terminal.activateEnvInCurrentTerminal": true,
+		"terminal.integrated.defaultProfile.windows": "Command Prompt",
+		"jupyter.jupyterServerType": "remote"
+	}
+}
