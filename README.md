@@ -1,6 +1,9 @@
 # Building Permit Metrics of the San Francisco Bay Area 
 *CPLN 680 Capstone* <br>by Alexander Nelms
 
+## Presentation
+[**Google Slides**](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
+
 ## Question
 1. How long does it takes to obtain a residential building construction permit for the cities of San Francisco, Berkeley, & Walnut Creek?
 * with how many Total Days, Working Days, Re-Submittals, & Public Hearings needed?
