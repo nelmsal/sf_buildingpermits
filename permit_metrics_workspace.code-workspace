@@ -2,6 +2,12 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "..\\..\\..\\..\\OneDrive - walnut-creek.org\\Projects\\Accela_Construct_API"
+		},
+		{
+			"path": "..\\..\\..\\Code\\keys"
 		}
 	],
 	"settings": {
