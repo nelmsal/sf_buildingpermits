@@ -6,6 +6,15 @@ import sys
 # They are listed in the API reference for each request
 # - e.g. to use the API to request records you need to include 'records' or 'search_records' (depending on which API call you use).
 
+def get_request(url, parameters, headers):
+    if parameters!=None:
+        parameters = urllib.parse.urlencode(parameters).encode("utf-8")
+    req = urllib.request.Request(url, parameters, headers)
+    with urllib.request.urlopen(req) as response:
+        the_page = response.read()
+        d = json.loads(the_page)
+    return d
+
 access_token_location = r'./Admin/AccelaAccessToken.txt'
 refresh_token_location = r'./Admin/AccelaRefreshToken.txt'
 
@@ -19,31 +28,26 @@ def SetToken(
     contentType = 'application/x-www-form-urlencoded'
     headers = { 'Content-Type' : contentType }
 
-    values = {
+    parameters = {
         'grant_type'      : grant_type,
-        #'MyAccelaPassword',
         'scope'           : scope,
             }
 
     from accela.GetAppInfo import GetAppUserInfo
-    info_values = GetAppUserInfo(app_type = app_type)
-    values.update(info_values)
+    info_parameters = GetAppUserInfo(app_type = app_type)
+    parameters.update(info_parameters)
 
-    if agency != '' or app_type != 'citizen':
-        values['agency_name'] = agency
+    if agency != '':
+        parameters['agency_name'] = agency
         ##'ccsf',
     if environment != '':
-        values['environment'] = environment
+        parameters['environment'] = environment
         ##'PROD'
 
-    data = urllib.parse.urlencode(values).encode("utf-8")
-    req = urllib.request.Request(ACCESS_URL, data, headers)
-    with urllib.request.urlopen(req) as response:
-        the_page = response.read()
-        d = json.loads(the_page)
+    token_response = get_request(ACCESS_URL, parameters, headers)
 
-    AccessToken = d['access_token']
-    RefreshToken = d['refresh_token']
+    AccessToken = token_response['access_token']
+    RefreshToken = token_response['refresh_token']
 
     tokenfile = open(access_token_location, "w")
     tokenfile.write(AccessToken)
