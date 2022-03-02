@@ -1,15 +1,29 @@
 import json
 
-def load_agencies():
-    f = open(user_info_path, "r")
-    user_info = json.loads(f.read())['User Info']
-    f.close()
+agency_path = r".\static_data\agencies.json"
 
-def get_agency_info(agency_name):
-    f = open(user_info_path, "r")
-    user_info = json.loads(f.read())['User Info']
-    f.close()
+def get_agencies(agency_path = agency_path):
+    with open(agency_path, 'r') as ajson:
+        agencies = ajson.read()
+        agencies = json.loads(agencies)['agency']
+    return agencies
 
-    username, password = user_info['username'], user_info['password']
+def get_agencies_accela_info(city, get='dict', agency_path = agency_path):
 
-    return username, password
+    nicknames = {
+        'SF':'CCSF',
+        'BERK':'BERKELEY',
+        'OAK':'OAKLAND'
+    }
+    city = city.strip().upper()
+    if city in nicknames.keys():
+        city = nicknames[city]
+
+    agencies_info = get_agencies(agency_path)
+    city_info = agencies_info[city]
+    if get =='values':
+        return city_info['agency'], city_info['environment']
+    elif get == 'both':
+        return city_info, city_info['agency'], city_info['environment']
+    else:
+        return city_info

@@ -1,8 +1,8 @@
 import json
 
-app_info_path = r'C:\Users\nelms\Documents\Code\keys\permit_metric_app.json'
-user_info_path = r'C:\Users\nelms\Documents\Code\keys\accela_user_info.json'
-
+keys_path = r'C:\Users\nelms\Documents\Code\keys'
+app_info_path = keys_path + r'\permit_metric_app.json'
+user_info_path = keys_path + r'\accela_user_info.json'
 
 def get_app_info(app_info_path=app_info_path, app_type='citizen'):
     f = open(app_info_path, "r")

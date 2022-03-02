@@ -2,26 +2,24 @@ import urllib
 import json
 import sys
 
+from accela.AccelaRequest import *
+
 # Scope below limits what the token will provide access to.
 # They are listed in the API reference for each request
 # - e.g. to use the API to request records you need to include 'records' or 'search_records' (depending on which API call you use).
 
-def get_request(url, parameters, headers):
-    if parameters!=None:
-        parameters = urllib.parse.urlencode(parameters).encode("utf-8")
-    req = urllib.request.Request(url, parameters, headers)
-    with urllib.request.urlopen(req) as response:
-        the_page = response.read()
-        d = json.loads(the_page)
-    return d
+access_token_path = r'./Admin/AccelaAccessToken.txt'
+refresh_token_path = r'./Admin/AccelaRefreshToken.txt'
 
-access_token_location = r'./Admin/AccelaAccessToken.txt'
-refresh_token_location = r'./Admin/AccelaRefreshToken.txt'
+TOKEN_URL = r'https://auth.accela.com/oauth2/token'
 
-ACCESS_URL = r'https://auth.accela.com/oauth2/token'
+def openwrite(path, data):
+    tokenfile = open(path, "w")
+    tokenfile.write(data)
+    tokenfile.close()
 
 def SetToken(
-    agency='', environment='PROD', scope="records parcels",
+    agency_info={}, agency='', environment='', scope="records parcels",
     app_type='citizen', grant_type='password'
     ):
 
@@ -37,30 +35,29 @@ def SetToken(
     info_parameters = GetAppUserInfo(app_type = app_type)
     parameters.update(info_parameters)
 
+    # get agency info
+    ## replace agency info dict with direct variables
+    if 'agency' in agency_info.keys():
+        agency_info['agency_name'] = agency_info['agency']
+        agency_info.pop('agency')
     if agency != '':
-        parameters['agency_name'] = agency
-        ##'ccsf',
+        agency_info['agency_name'] = agency
     if environment != '':
-        parameters['environment'] = environment
-        ##'PROD'
+        agency_info['environment'] = environment
+    parameters.update(agency_info)
 
-    token_response = get_request(ACCESS_URL, parameters, headers)
+    token_response = get_request(TOKEN_URL, parameters, headers)
 
     AccessToken = token_response['access_token']
+    openwrite(access_token_path, AccessToken)
+
     RefreshToken = token_response['refresh_token']
+    openwrite(refresh_token_path, RefreshToken)
 
-    tokenfile = open(access_token_location, "w")
-    tokenfile.write(AccessToken)
-    tokenfile.close()
-
-    tokenfile = open(refresh_token_location, "w")
-    tokenfile.write(RefreshToken)
-    tokenfile.close()
-
-def GetToken(type='Access', location=''):
+def GetToken(type='Access', path=''):
     if type=='Access':
-        location = access_token_location
+        path = access_token_path
     elif type=='Refresh':
-        location = refresh_token_location
-    with open(location) as f:
+        path = refresh_token_path
+    with open(path) as f:
         return f.read()
