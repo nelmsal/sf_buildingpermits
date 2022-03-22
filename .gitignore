@@ -4,3 +4,4 @@ admin/AccelaToken.txt
 *.pyc
 admin/AccelaRefreshToken.txt
 admin/AccelaAccessToken.txt
+raw_data/sf_planning_permits_20220321.geojson
