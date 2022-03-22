@@ -2,9 +2,9 @@
 *CPLN 680 Capstone* <br>by Alexander Nelms
 
 ## Deliverables
-**Feb 11 - Summary Presentation [Google Slides**](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
+**Feb 11 - Summary Presentation**     [*Google Slides*](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
 
-[**Mid-Point Presentation (Mar 25)  - Google Slides**](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
+**Mar 25 - Mid-Point Presentation**   [*Google Slides*](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
 
 ## Question
 1. How long does it takes to obtain a residential building construction permit for the cities of San Francisco, Berkeley, & Walnut Creek?
