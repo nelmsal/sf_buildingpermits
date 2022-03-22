@@ -1,8 +1,16 @@
-# Building Permit Metrics of the San Francisco Bay Area 
+# Building Permit Metrics of San Francisco
 *CPLN 680 Capstone* <br>by Alexander Nelms
 
-## Presentation
-[**Google Slides**](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
+## Deliverables
+| Date | Project | Location |
+| :---: | :--- | :---: |
+| Jan 21 | **Project Proposal 0** | [*PDF*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/deliverables/Nelms%20-%20Project%20Proposal%200.pdf) |
+| Feb 11 | **Summary Presentation** | [*Google Slides*](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing) |
+| Feb 18 | **Project Proposal 1** | [*PDF*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/deliverables/Nelms%20-%20Project%20Proposal%201.pdf) |
+| Mar 4 | **Work in Progress Report** | [*PDF*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/deliverables/Nelms%20-%20Work%20in%20Progress%20Report.pdf) |
+| Mar 25 | **Mid-Point Presentation** | [*Google Slides*](https://docs.google.com/presentation/d/1W1AoLwwzns3m4JJcWKHuaKogv6Pc1gcwluKkO7m-1Jo/edit?usp=sharing) |
+| Mar 25 | **Peer Review 1** - Hanyu Gao |  |
+| Mar 25 | **Peer Review 2** - Hanpu Yao |  |
 
 ## Question
 1. How long does it takes to obtain a residential building construction permit for the cities of San Francisco, Berkeley, & Walnut Creek?
