@@ -9,8 +9,8 @@
 | Feb 18 | **Project Proposal 1** | [*PDF*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/deliverables/Nelms%20-%20Project%20Proposal%201.pdf) |
 | Mar 4 | **Work in Progress Report** | [*PDF*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/deliverables/Nelms%20-%20Work%20in%20Progress%20Report.pdf) |
 | Mar 25 | **Mid-Point Presentation** | [*Google Slides*](https://docs.google.com/presentation/d/1W1AoLwwzns3m4JJcWKHuaKogv6Pc1gcwluKkO7m-1Jo/edit?usp=sharing) |
-| Mar 25 | **Peer Review 1 - Hanyu Gao** |  |
-| Mar 25 | **Peer Review 2 - Hanpu Yao** |  |
+| Mar 25 | **Peer Review 1** - Hanyu Gao |  |
+| Mar 25 | **Peer Review 2** - Hanpu Yao |  |
 
 ## Question
 1. How long does it takes to obtain a residential building construction permit for the cities of San Francisco, Berkeley, & Walnut Creek?
