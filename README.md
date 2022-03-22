@@ -1,4 +1,4 @@
-# Building Permit Metrics of the San Francisco Bay Area 
+# Building Permit Metrics of San Francisco
 *CPLN 680 Capstone* <br>by Alexander Nelms
 
 ## Deliverables
