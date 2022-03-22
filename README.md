@@ -1,8 +1,8 @@
 # Building Permit Metrics of the San Francisco Bay Area 
 *CPLN 680 Capstone* <br>by Alexander Nelms
 
-## Presentation
-[**Summary Presentation (Feb 11)    - Google Slides**](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
+## Deliverables
+**Feb 11 - Summary Presentation [Google Slides**](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
 
 [**Mid-Point Presentation (Mar 25)  - Google Slides**](https://docs.google.com/presentation/d/1N7rwu2h_tOyCqjYUjLAdrQE9qGC5Ub88AGJ2C4VMKzw/edit?usp=sharing)
 
