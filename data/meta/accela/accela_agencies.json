@@ -1,0 +1,16 @@
+{
+    "agency": {
+        "CCSF": {
+            "agency": "CCSF",
+            "environment": "PROD"
+        },
+        "BERKELEY": {
+            "agency": "BERKELEY",
+            "environment": "PROD"
+        },
+        "OAKLAND": {
+            "agency": "OAKLAND",
+            "environment": "PROD"
+        }
+    }
+}
