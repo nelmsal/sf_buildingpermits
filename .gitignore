@@ -11,3 +11,6 @@ deliverables/~$lms - Work in Progress Report.docx
 *.geojson
 deliverables/Nelms - Work in Progress Review 1 - Hanpu Yao.pdf
 *.geojson
+data/raw/displacement-typologies/sf_displacementtypologies.gpkg
+*.zip
+data/raw/evict/ca_evict_unvalidated_blockgroups.csv

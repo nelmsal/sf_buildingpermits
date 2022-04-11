@@ -1,0 +1,6 @@
+FILTER 
+Permit Type == 1 or 2 (New Construction or New w/ wood)
+Issued Date after 1999
+Issued Date before 2019
+Proposed Units greater than 0
+Geometry isn't empty (only 50 of 3.7k)
