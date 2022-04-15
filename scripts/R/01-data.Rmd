@@ -1,0 +1,476 @@
+
+
+The first step is important & engineering appropriate dependent ('house prices') and independent variables. Largely, these variables describe:
+
+1. the house's internal & building characteristics;
+
+2. nearby public services & amenities; and,
+
+3. relevant spatial processes & external attributes.
+
+The variables imported & engineered in Section 1 aren't the full list of variables considered in this project. There was a fair amount of background data cleaning, extraction, and ignored variables before settling on this list of 27 variables. In Section 2, that list is narrowed down to 13 after testing independence and correlation. 
+
+## Internal Characteristics
+
+A majority of our variable come from the internal characteristics of the homes as they are the physical property being sold. 
+
+###  Sales & Attributes
+
+The primary data set our team will be using is a collection of Boulder County Single-Family Homes Sales from January 2019 to February 2021 (n = 11,364). 
+
+These points, sales, and building characteristics were curated into a single data set by the Urban Spatial data team and the University of Pennsylvania's Department of Urban Spatial Analytics. However, the data originated from the sales, parcels, and building records of [Boulder County's Tax Assessor Office](https://www.bouldercounty.org/property-and-land/assessor/data-download/). On the local level, the Assessor's Parcel & Building data is the primary, and sometimes *only*, method of recording the population, built environment, and housing transactions. We found it important to heavily utilize this data as it can be found in most local levels in the United States. 
+
+To emphasize, our team and model is utilizing the Assessor's (1) Building Characteristics and (2) Sales properties that were provided to us -- as well as the (3) lot sizes found in the Assessor's Parcels & Land tables. This is an important clarification as our team is developing an model *independent* of Boulder County's Assessed Property Valuation Model and its predicted values. We did **not** pull any other sales or predictions.
+
+```{r vars_sales_import}
+
+DIR = "C:/Users/nelms/Documents/Penn/CPLN-680/Permit_Metrics"
+
+# sf feet proj
+project_crs = st_crs('EPSG:7132')
+
+# data pre-cleaned in python
+data_path =
+   paste(DIR, "/data/clean/sf_dataset_20220414.geojson", sep="")
+sf.data =
+  st_read(data_path)
+
+```
+
+### Lot Size
+
+In order to find the lot sizes of the housing sales, we pre-joined the Home Sales points to the Tax Assessor Parcels through a (1) spatial join and a (1) tabular join on the shared 'address' field. It is important to use lot size in the model as it is a large share of a home's valuation. 
+
+```{r vars_sales_lots}
+
+### ### ### ### ### #
+## Original Location of Parcels
+###  https://opendata-bouldercounty.hub.arcgis.com/datasets/parcels/explore
+
+## parcel_path =
+##   "./data/Boulder_Parcels_20211009.geojson"
+## sf.p.all =
+##   st_read(parcel_path) %>%
+##   st_transform(project_crs)
+
+### ### ### ### ### ### 
+## Original Location of Tax Assessor's Tables 
+###  https://www.bouldercounty.org/property-and-land/assessor/data-download/
+###  I only used these tables: Account & Parcel Numbers, Owners & Address, Buildings, & Land
+###  I DID NOT use any tables with sales or valuation data
+
+# sf.p.join = 
+#   read.csv("data/Boulder_Sales_Assessor_join.csv")
+# 
+# sf.data = 
+#   merge(
+#     sf.data,
+#     sf.p.join,
+#     on='id.apn'
+#   ) %>% select(-X)
+
+# To save ~~some~~ *alot* of time and memory space, I pre-joined the Housing Sales and associated Tax Parcels to get the shared account id, ("id.acct"/"strap"), Parcels Numbers ("id.apn"/"parcelno"/"folio"), and lot sizes in square feet.
+```
+
+### Engineering Features
+
+The internal variable engineering is primarily creating binary variables or re-configuring categorical/ordinal variables. In one instance, we engineered binary fields if the house had Air Conditioning Systems ("build.ac"), Heating Systems ("build.heatsys"), or both ("build.hvac"). 
+
+``` {r vars_sales_engineer}
+# 
+# sf.data =f
+#   sf.data %>%
+#   mutate(
+#     build.main.sf = mainfloorSF,
+#     build.stories = 
+#       ifelse(
+#         designCodeDscr %in% c('Bi-level', 'MULTI STORY- TOWNHOUSE'),
+#         2,
+#         ifelse(
+#           designCodeDscr %in% c('Split-level'),
+#           3,
+#           ifelse(
+#             designCodeDscr %in% c('2-3 Story'),
+#             2.5,
+#             ifelse(
+#               designCodeDscr %in% c('1 Story - Ranch'),
+#               1,
+#               0
+#             )))),
+#     build.bsmt.finished = ifelse(
+#       grepl(' FINISHED', bsmtTypeDscr),
+#       1,
+#       0),
+#     build.garage.covered = ifelse(
+#       carStorageType %in% c("GRA", "GRB", "GRD", "GRW", "GRF"),
+#       1,
+#       0)
+#     )
+# 
+# ## analyzing if the 2-3 stories is larger
+# sf.up_down = 
+#   sf.data %>% 
+#   st_drop_geometry() %>%
+#   filter(designCodeDscr=='2-3 Story' & build.main.sf>0) %>%
+#   mutate(
+#     build.upstairs.sf = TotalFinishedSF - mainfloorSF,
+#     build.up_down.ratio = round(build.upstairs.sf/build.main.sf,2),
+#     build.up_down.diff.sf = build.upstairs.sf-build.main.sf,
+#     build.stories.fix = ifelse(
+#       (build.up_down.ratio>1)&(build.up_down.diff.sf>100),
+#       3,
+#       2
+#     ))
+# 
+# ## sf.up_down %>%
+# ##   group_by(build.stories.fix) %>%
+# ##   summarise(
+# ##     mean.up_down.ratio = mean(build.up_down.ratio),
+# ##     mean.diff.sf = mean(build.up_down.diff.sf),
+# ##     count = n()
+# ##     ) %>% arrange(count)
+# 
+# sf.data[
+#   (sf.data$designCodeDscr=='2-3 Story') & 
+#   (sf.data$build.main.sf>0), 'build.stories'] = 
+#   sf.up_down %>% pull(build.stories.fix)
+# 
+# sf.data = 
+#   sf.data %>%
+#   mutate(
+#     build.quality = qualityCode,
+#     build.year    = builtYear,
+#     build.year.adj = EffectiveYear,
+#     build.garage.sf = carStorageSF,
+#     build.bsmt.sf   = bsmtSF,
+#     build.house.sf  = TotalFinishedSF,
+#     build.garage.sf = carStorageSF,
+#     build.bedrooms  = nbrBedRoom,
+#     build.rooms  = nbrRoomsNobath,
+#     
+#     build.baths.adj = nbrFullBaths + nbrThreeQtrBaths + nbrHalfBaths*.5,
+#     build.baths   = nbrFullBaths + nbrThreeQtrBaths + nbrHalfBaths,
+#     build.living.sf  = build.house.sf + ifelse(
+#                         build.bsmt.finished==1, 
+#                         build.bsmt.sf, 0),
+#     build.ac      = ifelse(Ac %in% c(215,210), 1, 0),
+#     build.heatsys = ifelse(
+#       Heating %in% c(810,830,880,850, 820), 1, 0),
+#     build.hvac    = ifelse(
+#       (build.heatsys==1)&(build.ac==1),1,0)
+#     
+#   )
+
+```
+
+In another instance, the original assessor field of the amount of 'stories' in the building are empty. As a result, we estimated the stories based on (1) the Assessor's Design Codes & (2) narrowing down those ranges of stories based on a ratio of 'upstairs square footage' over 'main floor square footage'. If upstairs square footage has a significantly larger area than the main floor, then it likely has more than 2 floors.
+
+## Public Services
+
+Our model also wants to incorporate external factors, with public services being important. 
+
+###   Boundaries
+
+For administrating & visualizing variables, we import in Boulder County and city boundaries. The main field being use is 'whether or not the home is in an incorporated city'.
+
+``` {r vars_boundaries}
+
+# sf.county = 
+#   st_read('data/boulder_county.geojson') %>%
+#   st_sf(., crs=project_crs)
+# 
+# sf.cities = 
+#   st_read('data/boulder_cities.geojson') %>%
+#   st_sf(., crs=project_crs)
+# 
+# sf.cities.incorp = 
+#   sf.cities %>% filter(incorporated=='city') %>%
+#   mutate(in.city = 1)
+# 
+# sf.data = 
+#   sf.data %>%
+#   st_join(., sf.cities.incorp %>% select(in.city)) %>%
+#   mutate(in.city = replace_na(in.city, 0))
+
+```
+
+### BART
+
+```{r 1A1_transit_import, warning = FALSE, message = FALSE}
+
+DATA_DIR = 'C:/Users/nelms/Documents/Penn/2021 Fall/MUSA-508/Files'
+
+#stop_path = "https://services3.arcgis.com/i2dkYWmb4wHvYPda/arcgis/rest/services/transitstops_existing_planned_2021/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=2227&f=geojson"
+stop_path = paste0(DATA_DIR, '/SF-Bay_Transit-Stops-Major_2021.geojson')
+
+#route_path = "https://services3.arcgis.com/i2dkYWmb4wHvYPda/arcgis/rest/services/transitroutes_01_2020/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=2227&f=geojson"
+route_path = paste0(DATA_DIR, '/BART_routes.geojson')
+
+BART.stops =
+  # from the MTC API, who sourced it from BART
+  st_read(stop_path) %>%
+  # only look at BART & weekday routes
+  filter(agency_id == "BA", route_s_nm!="Blue-Sun", route_s_nm!='Beige') %>%
+  mutate(
+    route_s_nm = ifelse(
+      route_s_nm=="Blue-Wkd/Sat", "Blue", 
+      route_s_nm)
+  ) %>%
+  st_transform(., project_crs)
+
+# Projection is (NAD83) California State Plan, Zone 2 (in FEET)
+# EPSG:2226
+CA_crs = st_crs(project_crs)
+#cat(CA_crs$input, ', EPSG:', CA_crs$epsg)
+
+BART.routes = 
+  st_read(route_path) %>%
+  filter(agency_id == "BA", route_s_nm!="Blue-Sun") %>%
+  mutate(
+    route_s_nm = ifelse(
+      route_s_nm=="Blue-Wkd/Sat", "Blue", 
+      route_s_nm)
+  ) %>%
+  st_transform(., project_crs)
+
+# NARROW STOPS TO .5 MILE OUTSIDE THESE CITIES
+BART.stops =
+  BART.stops %>%
+  # .5 mile buffer + 1 foot
+  st_filter(., st_buffer(st_union(sf.data), dist=5280*.5+1)) %>%
+  group_by(stop_nm,stop_id) %>%
+  st_drop_geometry(.) %>%
+  summarise(
+    route_count = n_distinct(route_s_nm), # get routes used
+    routes      = list(unique(route_s_nm))
+  ) %>%
+  merge(., BART.stops[,'stop_id'], by='stop_id') %>%
+  distinct() %>% # remove duplicates
+  st_as_sf()
+
+# NARROW STOPS TO THESE CITIES 
+BART.routes = st_intersection(BART.routes, st_buffer(st_union(sf.data),5280*.5))
+
+```
+
+```{r 1A2_Buffers}
+
+buffer_distance = .5
+
+min_point_distances = function(
+  input.geoms,
+  input.ids,
+  compare.geoms,
+  compare.ids
+){
+  # GET DISTANCES OF TRANSIT STOPS AND THE FOCUS AREA BOUNDARY
+  distances_matrix = 
+    outer(input.geoms,
+          compare.geoms,
+          FUN=Vectorize(st_distance, USE.NAMES = FALSE))
+  
+  # CREATE MATRIX COLUMN & ROW NAMES
+  rownames(distances_matrix) = input.ids
+  colnames(distances_matrix) = compare.ids
+  
+  get_col = function(rowname, find_num){
+    return(colnames(distances_matrix)[distances_matrix[rowname, ] == find_num])
+  }
+  get_col = Vectorize(get_col)
+  distances_df =
+    apply(distances_matrix, 1, min) %>% as.data.frame() %>%
+    rename('distance'=1) %>%
+    rownames_to_column('ID') %>%
+    mutate(closest=get_col(ID, distance))
+  
+  return(distances_df)
+}
+
+sf.coords = sf.data %>% 
+    st_convex_hull() %>% 
+    st_cast(., "MULTIPOINT") %>%
+    st_union() %>%
+    st_cast(., "POINT")
+
+BARTstop_EBboundary_distances = min_point_distances(
+  input.geoms = sf.coords,
+  input.ids   = seq(from=1,to=length(sf.coords)),
+  compare.geoms = BART.stops$geometry,
+  compare.ids = BART.stops$stop_id
+)
+  
+# GET LARGEST CLOSEST DISTANCE (MILES) BETWEEN STOPS AND BOUNDARY
+max_min_BART_SF_dist = 
+  max(BARTstop_EBboundary_distances$distance)/mile
+
+# MINIMUM DISTANCE NEEDED TO BUFFER FROM TRANSIT STOPS AND COVER ALL FOCUS AREAS
+# ASSUMES IN 1/2 or 1 MILE INTERVALS
+buffer_max_distance = ceiling(max_min_BART_SF_dist)
+
+# FUNCTION CREATING MULTIPLE RING BUFFERS FOR TRANSIT STOPS
+# CYCLES THROUGH EACH DISTANCE ROW TO BUFFER & UNION
+multiringbuffers_byrow = function(
+  input.points, # BART Stops or any point
+  buffer_distance=.5,
+  buffer_max=5,
+  # default fields & info for union
+  union_default = data.frame(
+    stop_id=c('ALL'),stop_nm=c('UNION'),
+    route_count=c(0),routes=c(''))
+){
+  mile=5280
+  # SEQUENCE VECTOR OF BUFFER RING LENGTHS
+  buffer_distances = 
+    seq(from=buffer_distance, 
+        to=buffer_max, by=buffer_distance)
+  
+  # CYCLE THROUGH DISTANCES TO BUFFER EACH POINT
+  # USE ST_DIFFERENCE TO CREATE RINGS
+  # CREATE UNION ROW OF EACH DISTANCE
+  for (current_buffer_distance in buffer_distances) {
+    # GEOM OF SMALLER DISTANCE TO CREATE RING
+    buffer.difference = 
+      input.points %>% 
+        st_buffer(
+          (current_buffer_distance-buffer_distance)*mile
+          ) %>% st_union() %>% st_sfc()
+    # SF BUFFER OF EACH STOP
+    buffer.new = 
+      input.points %>%
+      st_buffer(., current_buffer_distance*mile) %>%
+        st_difference(., buffer.difference) %>%
+      mutate(distance = current_buffer_distance)
+    
+    # SF BUFFER UNION FOR NEW ROW 
+    buffer.union = 
+      buffer.new %>%
+        st_union() %>%
+        st_difference(., buffer.difference) %>%
+        st_sfc() %>%
+      # cbind default union fields
+      cbind(
+        ., union_default %>%
+          mutate(distance=current_buffer_distance)
+        ) %>% st_as_sf() %>% 
+      # reorder columns for rbind
+      subset(., select=colnames(buffer.new))
+    
+    # rbind to all buffers
+    if (current_buffer_distance==buffer_distance) {
+      buffer.temp = 
+        st_as_sf(rbind(
+          buffer.union, 
+          buffer.new))} 
+    else 
+      buffer.temp = 
+      st_as_sf(rbind(
+        buffer.temp, 
+        buffer.union, 
+        buffer.new))
+  }
+  # reset index
+  row.names(buffer.temp) <- NULL
+  return(buffer.temp)
+}
+
+buffer_distance = .5
+BART.buffers = 
+  multiringbuffers_byrow(
+    BART.stops, buffer_distance=buffer_distance,
+    buffer_max=buffer_max_distance)
+
+buffer_distances = 
+  seq(from=buffer_distance, to=buffer_max_distance, by=buffer_distance)
+
+buffer_breaks = c(0,buffer_distances)
+buffer_labels =
+  c(gsub("0.", ".", buffer_breaks))
+#buffer_breaks = c(buffer_distances,buffer_max_distance+buffer_distance)
+
+```
+```{r centroid}
+
+# GET CENTROIDS IN EAST BAY
+tracts.all.centroid =
+  sf.data[c('geoid10','geometry')] %>%
+  # centroid with largest poly to avoid water in city shapes
+  st_centroid(sf.data, of_largest_polygon = TRUE)
+
+
+min_BART_dist_find = function(tract.pt){
+  dists_bart = sapply(
+    BART.stops$geometry, function(BART_pt) 
+    st_distance(BART_pt, tract.pt))
+  return(min(dists_bart))
+}
+
+tract_bart_distances = min_point_distances(
+  tracts.all.centroid$geometry, tracts.all.centroid$geoid10,
+  BART.stops$geometry, BART.stops$stop_id) %>%
+  rename(geoid10=ID, dist_BART=distance, closest_BART=closest)
+
+tracts.all.centroid = 
+  tracts.all.centroid %>%
+  merge(
+    ., 
+    tract_bart_distances,
+    by='geoid10', all.x = TRUE
+  )
+
+# CALCULATE NEW COLUMNS BY WEIGHTING & LQ
+sf.data =
+  sf.data %>%
+  merge(
+    ., 
+    tracts.all.centroid %>% as.data.frame() %>% 
+      select(geoid10, dist_BART, closest_BART) %>%
+      rename(dist_BART.tot.2020 =dist_BART) %>%
+      distinct(.),
+    by='geoid10', all.x = TRUE)
+  
+
+```
+
+
+## Managing Data
+
+Before setting our data sets off for exploration and modelling, we will organize our variables, remove outliers, and selecting which houses to predict for.
+
+
+Looking at the filters, we are only removing around 174 housing sales observations out of the total 11,264 (1.5 %). 
+
+### Predicting Dataset
+
+WE split up the data between sales prices known, and the sales prices that are set to be predicted. We will look at the predicted prices for all variables at the end of Section 3.
+
+``` {r vars_partition}
+
+vars = colnames(sf.data)
+
+
+vars.admin = c('geoid10', 'geometry')
+
+var.dv = "units.tot.15_19"
+
+var.ivs.all = vars[!(vars %in% c(var.dv, vars.admin, 'closest_BART', 'dist_BART_miles'))]
+
+non_res_geoid10 = c(
+    '06075060100', #presidio
+    '06075980300', # golden gate park
+    '06075980200', # land's end
+    '06075060400', # Mercer Park
+    '06075980501' # McLaren
+)
+
+sf.predict.0 = 
+  sf.data %>%
+    filter(!geoid10 %in% non_res_geoid10) %>%
+    mutate_all(~replace(., is.na(.), 0))
+sf.predict.1 = 
+  sf.data %>%
+    filter(!geoid10 %in% non_res_geoid10) %>%
+    mutate_all(~replace(., is.na(.), 0))
+
+```
+
+

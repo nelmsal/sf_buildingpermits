@@ -1,0 +1,604 @@
+## Methods
+
+To create a relative simple prediction model of house prices, we use an Ordinary least squares (OLS) linear regression. This model's linear equation was created ('fitted') by a test set of home prices and multiple predictor variables. If we hope to predict unknown home prices, all we have to do is input in their predictor variables into the equation. 
+
+This section:
+
+2. estimates this model with training data & predictors, 
+
+3. cross-validates it with known testing data & randomized trials, then
+
+4. runs the model on all of our housing data.
+
+
+### 	Partition Training & Test Sets
+
+Before developing the model, this study splits the dataset of known home prices [sf.predict.0] before training a linear model so we can test that model on unbiased data. Specifically, 75% of the known home prices are randomly split into the training dataset [sf.train] -- while 25% goes into an unbiased test set [sf.test].
+
+
+```{r setup_train_test_partition}
+
+var.dv = "units.tot.15_19"
+var.ivs = c(vars.ivs.disc_fin, vars.ivs.cont_fin)
+
+select_v = function(sf, variable_names=c(var.dv, var.ivs)){
+  return(sf %>% st_drop_geometry(.) %>%
+             select(variable_names))}
+
+select_iv = function(sf, variable_names=var.ivs){
+  return(sf %>% st_drop_geometry(.) %>%
+             select(variable_names))}
+
+inTrain = createDataPartition(
+              y = sf.predict.0 %>% pull(units.tot.15_19), 
+              p = .75, list = FALSE)
+
+sf.train = 
+  sf.predict.0[inTrain,] %>% 
+  select(c(vars.admin, var.dv, var.ivs))
+
+sf.test = 
+  sf.predict.0[-inTrain,] %>% 
+  select(c(vars.admin, var.dv, var.ivs))
+
+```
+
+
+##  Train Model 
+
+With a training set, the study can now build its initial training linear model [lm.train] based on the predictor variables constructed in Section 1.
+
+###  Fitting a Linear Model
+
+```{r setup_train_lm}
+
+#var.ivs = var.ivs %>% list()
+var.dv = var.dv
+
+var.ivs.str = 
+  do.call(paste, c(var.ivs %>% list(), collapse = "+"))
+
+fm_equation = as.formula(paste(
+  var.dv, var.ivs.str, sep="~"))
+
+print(fm_equation)
+
+
+lm.train = 
+  lm(
+    fm_equation, 
+    data = sf.train %>% select_v(.)
+    )
+```
+
+
+###  Summary Table
+
+The results of our model on the training set are presented below. The results highlight that most predictors are significant. What is odd is that houses within any incorporated city lose $188k in price. Another odd variable is bedrooms which are insignificant and might be a negative attribute to price.
+
+``` {r table_train_summ, results = "asis"}
+tab_num = 3
+
+format_nums = function(num_input, digits = 2) ifelse(abs(num_input)>999,
+                      count_format(num_input),
+                      round_thresh(num_input, digits = digits,int_check = TRUE))
+
+lm.train.summ = 
+  lm.train %>%
+  tidy() %>%
+  transmute(
+    Variable = 
+      term, 
+    Estimate = format_nums(estimate, digits = 3),  #%>%
+      #paste('$', .),
+    std.error = format_nums(std.error), # %>%
+      #paste('$', .),
+    t.value = format_nums(statistic),
+    p.value = p.value %>% round_thresh()
+  )
+
+lm.train.summ %>%
+  kable(
+    label = NA,
+    caption = glue('Table {tab_num}: Training Model Summary'),
+    align = 'lrrrr') %>%
+  kable_styling()
+```
+
+In Table 4, the R-Squared value tells us the percentage of our model that accounts for the variance in house sales price -- of which it is 44,5% (indicating how well our model explains the variation). The low p-value of the f-test, p<.001 indicates that our variables are statistically significant, indicating high levels of confidence that the relationship between predictor variables and house sales price is not zero (indicating lack of predicting ability). 
+
+``` {r table_train_err, results = "asis"}
+
+tab_num = 4
+
+title = glue('Table {tab_num}: Training Model Fit & Significance Terms')
+
+lm.train %>% glance() %>%
+  transmute(
+    `RSE` = format_nums(sigma), #%>%
+      #paste('$', .),
+    `df ` = format_nums(df.residual),
+    `Multiple` = format_nums(r.squared, digits=4),
+    `Adjusted` = format_nums(adj.r.squared, digits=4),
+    `stat` = format_nums(statistic, digits=1),,
+    `df` = format_nums(df),
+    p.value = p.value %>% round_thresh()
+  ) %>%
+  kable(
+    label = NA,
+    caption = title,
+    align = 'lrrrr') %>%
+  kable_styling() %>%
+  add_header_above(
+    header = c(
+      'Residual Standard Error'=2,
+      'R-squared' = 2,
+      'F-statistic' = 2,
+      ' ' = 1
+    ))
+```
+
+###  Errors Table
+
+The error summarized below indicates how well our model is predicting house sales value compared to known house sales values, with the error being that difference (i.e., the residuals). This will tell us how accurate our model is, with a mean absolute error of $ 231,276 and a percentage of 33.8%.
+
+``` {r table_train_error, results = "asis"}
+
+tab_num = 5
+
+sf.test =
+  sf.test %>%
+  mutate(
+    regression      = "Boulder Test Regression",
+    units1519.predict   = predict(lm.train, .), 
+    
+    # residuals
+    units1519.error     = units.tot.15_19 - units1519.predict,
+    units1519.rmse      = sqrt(mean((units1519.error)^2)),
+    units1519.abserror  = abs(units1519.predict - units.tot.15_19), 
+    units1519.ape       = units1519.abserror / units.tot.15_19,
+    units1519.pe         = units1519.error / units.tot.15_19
+    ) 
+
+# Mean Error
+test.ME = 
+  mean(sf.test$units1519.error, na.rm = T)
+
+# Mean Percentage Error
+test.MPE = 
+  mean(sf.test$units1519.pe, na.rm = T)
+
+# Mean Absolute Error (MAE)
+test.MAE = 
+  mean(sf.test$units1519.abserror, na.rm = T)
+
+# Mean Absolute Percentage Error (MAPE)
+test.MAPE = 
+  mean(sf.test$units1519.ape, na.rm = T)
+
+# Mean Squared Error (MSE)
+test.MSE = 
+  mean((sf.test$units1519.error)^2)
+
+# Root Mean Squared Error (RMSE)
+test.RMSE = 
+  sf.test$units1519.rmse[1]
+
+title = glue('Table {tab_num}: Linear Model Fit & Significance Terms')
+
+
+m = 1000000
+
+# Mean Prediction
+test.mean.prediction = 
+  mean(sf.test$units1519.predict, na.rm = T)
+
+data.frame(
+  N = nrow(sf.test) %>% format_nums(),
+  `MAE` = test.MAE %>% format_nums()%>%
+      paste('$', .),
+  `MAPE` = 
+    (test.MAPE * 100) %>% round_thresh(
+      ., digits = 3, int_check = FALSE) %>%
+      paste(., '%'),
+  `RMSE` = test.RMSE %>% format_nums()%>%
+      paste('$', .)
+  )%>%
+  kable(
+    label = NA,
+    caption = title,
+    align = 'rrrr') %>%
+  kable_styling()
+
+```
+
+###  Scatter Plot
+
+Figure 5 elaborates on the previous table by showing errors over observed price. The top row shows the errors (Observed Price - Predicted Price) but the bottom row shows absolute errors *with negatives being positive*.
+
+The top left plot highlights that over-to-under estimation rises with Price. Houses under the 95th percentile of \$2 million are overvalued while those over \$2 million are undervalued. This can be seen when re-calculating mean error for those below and above \$2m -- which can be see in the top-left's green (ME = -\$51k) and purple (ME = $1.3m) lines. Looking at the absolute error will provide a better measure of errors as a whole.
+
+The bottom-left plot of Absolute Error focuses on the errors themselves. The red fitted line highlights that error does increase with price. However, there is a set amount of error -- with homes within the 95th percentile (\$250k to \$2m) having an MAE of \$ 196k. There is still a shift in error after \$2 million with those above \$2 having a MAE of $1.3 m. 
+
+This overall trend suggests that higher priced homes don't have enough predictors to highlight their higher prices. While lower priced have predictors over-estimating them.
+
+The percentage error plots on the right-side add more depth to the errors. The Percent Error plots in the top-right and bottom-left highlight that overall homes have a set amount amount of percentage error with MAPE being 34%. MPE being -14% shows that the higher proportion errors are with lower-priced homes below \$1 million. Even though higher-priced homes have a high proportion of error, they stay within 100%.  
+
+The over-valued low-price homes are either the result of missing quality predictors or that some test data prices might be miss interpreted. We cute 20 outliers that sold for lest than $25k -- which seems like too low of a number to even be an outlier. It could be that there are homes in our test dataset that were administrative sales or deed transfers. E.g., a home is sold between family members for \$10k but is realistically priced at \$250k.
+
+```{r plot_train_lm}
+
+fig_num = 5
+
+title = glue('Figure {fig_num}: Observed Sales Prices & Test Error')
+
+m = 1000000
+
+# get lm of Absolute Error & Price
+geom_vline_lim = function(xintercept=1, ylim=c(1,Inf), ...) geom_line(data = data.frame(x = c(xintercept, xintercept), y = ylim), aes(x = x , y = y), ...)
+
+# two means of ME
+ME_2 = sf.test %>%
+  filter(units.tot.15_19 > 2*m) %>% 
+  pull(units1519.error) %>%
+  mean(., na.rm = T)
+
+ME_1 = sf.test %>%
+  filter(units.tot.15_19 < 2*m) %>% 
+  pull(units1519.error) %>%
+  mean(., na.rm = T)
+
+MAE_lm_fit <- lm(units.tot.15_19 ~ units1519.abserror, data=sf.test)
+summary(MAE_lm_fit)
+
+ape_breaks = c(0,1,2.5,5)
+pe_breaks = c(-5,-2.5,-1,0,1)
+
+xmoney_breaks = c(0,1,2,4,6) * m
+negxmoney_breaks = c(-2,-1,0,1,2,4) * m
+ymoney_breaks = c(0,1,2,4,6) * m
+
+percent_formatter = function(str) (str * 100) %>% round() %>% format(., big.mark = ",") %>% paste0(., "%")
+
+
+grid.arrange(ncol=2,
+  ggplot(data = sf.test) +
+    geom_point(aes(y = units.tot.15_19, x = units1519.error)) +
+    scale_x_continuous(breaks = negxmoney_breaks,
+                       labels = money_format,
+                       name = 'Price - Predicted Price') +
+    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) +
+    geom_vline_lim(xintercept=ME_1, ylim=c(0,2*m), color='#90ee90', size=1.25, linetype = "solid") + 
+        geom_vline_lim(xintercept=ME_2, 
+                       ylim=c(2*m,8*m), 
+                       color='#BF40BF', size=1.25, linetype = "solid") + 
+    #geom_vline(xintercept = test.ME, colour="#90ee90", size=1, linetype = "longdash") + 
+    labs(title=title, subtitle = 
+           glue("Error (ME = {money_format(test.ME %>% round())})")) +
+    plotTheme(),
+
+  ggplot(data = sf.test %>% filter(units1519.ape<5)) +
+    geom_point(aes(y = units.tot.15_19, x = units1519.pe)) +
+    scale_x_continuous(breaks = pe_breaks, name = 'Error / Price',
+                labels = percent_formatter(pe_breaks)) + 
+    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
+    geom_vline(xintercept = test.MPE, colour="#FF9B00", size=1, linetype = "longdash") + 
+    
+    geom_vline(xintercept = test.MPE, colour="#FF9B00", size=1, linetype = "longdash") + 
+    
+    labs(title='', subtitle = 
+           glue("Percent Error (MPE = {percent_formatter(test.MPE)})")) +
+    plotTheme(),
+  
+  ggplot(data = sf.test) +
+    geom_point(aes(y = units.tot.15_19, x = units1519.abserror)) +
+    scale_x_continuous(breaks = xmoney_breaks,
+                       labels = money_format,
+                       name = 'Absolute Error') + 
+    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
+    geom_line(color='red',data = 
+            data.frame(MAE_fit = predict(MAE_lm_fit, sf.test), 
+                       hp=sf.test$units1519.abserror), aes(x=hp, y=MAE_fit)) + 
+    geom_vline(xintercept = test.MAE, colour="#50c878", size=1, linetype = "longdash") + 
+    labs(subtitle = 
+           glue("Absolute Error (MAE = {money_format(test.MAE %>% round())})")) +
+    plotTheme(),
+  
+  ggplot(data = sf.test %>% filter(units1519.ape<5)) +
+    geom_point(aes(y = units.tot.15_19, x = units1519.ape)) +
+    scale_x_continuous(breaks = ape_breaks, name = 'Absolute Percentage Error',
+               labels = percent_formatter(ape_breaks)) + 
+    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
+    geom_vline(xintercept = test.MAPE, colour="#ff8c00", size=1, linetype = "longdash") + 
+    labs(subtitle = 
+           glue("Absolute Percent Error (MAPE = {percent_formatter(test.MAPE)})")) + 
+    plotTheme()
+)
+
+```
+
+## 	Validating Model
+
+With Figure 5 highlighting the error trends, it wil be important to see if they were the result of cuts in the test dataset.
+
+###  Cross-Validating with 100 Permutations
+*k-fold cross-validation *
+
+Next, we have to account for generalizability, in order for our model to be effective at predicting unknown, future data. We run a k-fold test on 100 of segments of our data equally split up, and then find the mean average error. 
+
+```{r setup_train_cv}
+
+# k-fold cross-validation 
+set.seed(825)
+
+train.control = 
+  trainControl(
+    method = "cv", 
+    number = 100,
+    savePredictions = TRUE)
+
+# was train.cv
+train.cv =
+  train(units.tot.15_19 ~ .,
+    data = sf.train %>% select_v(.),
+    method = "lm", 
+    trControl = train.control, na.action = na.pass)
+
+
+```
+
+
+###  Table
+
+In the table below, we see that for Fold 100, we have an r-Squared value of 48% and a RMSE of $380k. It is interesting that the errors of the 100-folds CV is higher than the test dataset. However, the R-Squared value is 4% higher at 48% -- which means that the predictor variables in the CV model explains more variation in price. For R-squared in the CV tests, it appears that there was not alot of deviation among the 100 permutations -- so our test dataset cut could be the cause for the lower Test R-squared (in Table 5).
+
+``` {r table_train_cv, results = "asis"}
+
+tab_num = 6
+
+sf.predict.0.cv =
+  sf.predict.0 %>%
+  select_v() %>%
+  mutate(
+    regression     = "Final CV Regression",
+    units1519.predict  = predict(train.cv, .), 
+    
+    # Residual
+    units1519.error     = units.tot.15_19 - units1519.predict, 
+    units1519.abserror = abs(units1519.predict - units.tot.15_19), 
+    units1519.ape      = (units1519.abserror / units.tot.15_19),
+    
+    units1519.SE = (units1519.error)^2,
+    units1519.rmse  = sqrt(mean(units1519.SE))
+  )
+
+train.cv.rs = train.cv$resample
+train.cv.final = train.cv$finalModel
+
+train.cv.100_final = 
+  rbind(
+    data.frame(
+      Model = c('Training Model'),
+      Dataset = c("Testing (25%)"), 
+      MAE.mean = test.MAE %>% 
+        format_nums(),
+      MAE.sd   = '',
+      RMSE.mean = test.RMSE %>%
+        format_nums(),
+      RMSE.sd   = '',
+      R2.mean = glance(lm.train)$r.squared %>% 
+        format_nums(., digits=4),
+      R2.sd   = ''
+    ),
+    data.frame(
+      Model = "100-Folds CV", 
+      Dataset = "Training (75%)",
+      MAE.mean = train.cv.rs$MAE %>% mean() %>% 
+        format_nums(),
+      MAE.sd   = train.cv.rs$MAE %>% sd() %>% 
+        format_nums(),
+      RMSE.mean = train.cv.rs$RMSE %>% mean() %>% 
+        format_nums(),
+      RMSE.sd   = train.cv.rs$RMSE %>% sd() %>% 
+        format_nums(),
+      R2.mean = train.cv.rs$Rsquared %>% mean() %>% 
+        format_nums(., digits=4),
+      R2.sd   = train.cv.rs$Rsquared %>% sd() %>% 
+        format_nums(., digits=4)
+    ),
+    data.frame(
+      Model = c('Final CV'),
+      Dataset = c("Observed House Sales"), 
+      MAE.mean = sf.predict.0.cv$units1519.abserror %>% mean() %>% 
+        format_nums(),#,
+      MAE.sd   = '',
+      RMSE.mean = sf.predict.0.cv$units1519.rmse[1] %>%
+        format_nums(),#,
+      RMSE.sd   = '',
+      R2.mean =  glance(train.cv.final)$r.squared %>% 
+        format_nums(., digits=4),
+      R2.sd   = ''
+    )
+  )
+
+
+train.cv.100_final %>%
+  kable(
+    label = NA,
+    caption = glue("Table {tab_num}: Permutation & Test Results"),
+    col.names = c('Model', 'Dataset', 'Mean', 'SD', 'Mean', 'SD','Mean', 'SD')) %>%
+  kable_styling() %>%
+  add_header_above(
+    header=c(' ' = 2, 'MAE'=2, 'RMSE'=2, 'R-Squared'=2)
+  ) %>%
+  footnote(alphabet = 
+             c(
+               "Final Model's Mean's columns are just the single statistic observation"
+               ))
+
+
+
+```
+
+###  Histogram
+*cross-validation MAE as a histogram.*
+
+The histogram (Figure 6) shows the distribution of mean average error across the 100 folds of the K-test. Our test MAE of \$231k is not out of the ordinary and is close to the 100-fold mean MAE of \$235k. 
+
+```{r histogram_train_cv_MAE}
+
+fig_num = 6
+
+ggplot(train.cv$resample, aes(x=MAE)) +
+  geom_histogram() +
+  labs(title = glue("Figure {fig_num}: Mean Average Error in Cross Validation Tests")) +
+  plotTheme()
+
+```
+
+##  Predicting All Homes
+
+Now we run the model onto the full dataset of known and unknown home values.
+
+```{r setup_all_predict}
+
+sf.predict = 
+  rbind(
+    sf.predict.0[, colnames(sf.predict.1)],
+    sf.predict.1
+  ) %>%
+  mutate(
+    regression      = "Final Regression",
+    units1519.predict   = predict(train.cv, .),
+    
+    # Residual
+    units1519.error     = units.tot.15_19 - units1519.predict, 
+    units1519.abserror = abs(units1519.predict - units.tot.15_19), 
+    units1519.ape      = (units1519.abserror / units.tot.15_19),
+    
+    units1519.rmse  = sqrt(mean((units1519.error)^2, na.rm=TRUE))
+  ) %>%
+  filter(
+    units.tot.15_19<price_max_threshold
+    )
+
+# sf.predict.1 %>%
+#   st_drop_geometry() %>%
+#   mutate(units1519.predict = predict(train.cv, .)) %>%
+#   select(id.musa, units1519.predict) %>% 
+#   arrange(id.musa) %>%
+#   rename(
+#     MUSA_ID = id.musa,price = units1519.predict
+#   ) %>%
+#   write.csv("Nelms-Mangiapane.csv")
+
+```
+
+###  Scatterplot
+*Plot predicted prices as a function of observed prices*
+
+
+Figure 7 highlights the trends seen in the Test Errors Scatterplot (Figure 5). The predicted sales are undervaluing observed price -- which is seen by our prediction model as the green line of Observed ~ Predicted Price. To contrast, the orange line shows the 1-to-1 perfect observed-prediction line. 
+
+The model oddly predicts a few negative values as well. This could be the result of lower quality homes being located outside of a city. Even though they are not negative, the variables in the model suggest so. 
+
+``` {r plot_all_predict_real}
+
+fig_num = 7
+title = glue('Figure {fig_num}: Predicted & Observed Sales Prices')
+
+line_min = min(max(sf.predict$units.tot.15_19), max(sf.predict$units1519.predict))
+
+ggplot() +
+    geom_point(data = sf.predict, aes(x = units.tot.15_19, y = units1519.predict)) +
+    geom_smooth(data = sf.predict, aes(x = units.tot.15_19, y = units1519.predict), method = lm, color='green') + 
+    geom_line(data=data.frame(
+          x=c(0,line_min+1*m),
+          y=c(0,line_min+1*m)),
+          aes(x=x,y =y), linetype='dashed',
+                  size=1.25, color='orange') +
+    scale_x_continuous(breaks = c(0,1,1.5,2.5,5)*m,
+                       labels = money_format,
+                       name = 'Observed Price') +
+    scale_y_continuous(breaks = c(0,1,1.5,2.5)*m, labels = money_format, name = 'Predicted Price',) +
+    labs(title=title,
+      subtitle = "Final Predicted Housing Prices") +
+    #xlim(min(sf.predict$price,0), max(sf.predict$price)) + 
+    #ylim(min(sf.predict$units1519.predict,0), max(sf.predict$units1519.predict)) + 
+    plotTheme()
+
+```
+
+###  Map
+
+This map of home predictions suggests that predicted prices are higher in suburban areas. In the next section, we run spatial tests to spatially locate trends in our errors. 
+   
+``` {r map_predictions}
+
+map_num = 4
+
+sf.predict = 
+  sf.predict %>%
+  st_join(
+    .,
+    sf.fishnet,
+    suffix = c("", ".dupe_join")
+  ) %>%
+  select(-ends_with(".dupe_join"))
+
+sf.predict.fishnet = 
+  merge(
+    sf.fishnet,
+    sf.predict %>%
+      mutate(count.homes = 1) %>%
+      st_drop_geometry() %>%
+      group_by(id.fishnet) %>%
+      summarize(
+        count.homes = sum(count.homes, na.rm=TRUE),
+        MAE = mean(units1519.abserror, na.rm=TRUE),
+        ME  = mean(units1519.error, na.rm=TRUE),
+        MPE = mean(units1519.abserror / units.tot.15_19, na.rm=TRUE),
+        avg.units1519.predict = mean(units1519.predict, na.rm=TRUE),
+        avg.units1519  = mean(units.tot.15_19, na.rm=TRUE)
+      ),
+    on='id.fishnet'
+  )%>%
+  mutate(
+    count.homes = replace_na(count.homes, 0),
+    avg.units1519.predict = replace_na(avg.units1519.predict, 0))
+
+Var1_map = var_cut_map(
+  focus_sf = sf.predict.fishnet,
+  var_field = "count.homes",
+  focus_pal = "PuBu",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0,1,10,50),
+  var_title = 'Count of Test Dataset',
+  var_legend = 'Count of Homes\nin Test Dataset',
+  var_num = 'A'
+)
+
+Var2_map = var_cut_map(
+  focus_sf = sf.predict.fishnet,
+  var_field = 'avg.units1519.predict',
+  focus_pal = "Greens 2",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0, 50000,250000,500000,1000000),
+  var_title = 'Average Predicted Price',
+  var_legend = 'Mean Predicted\nPrice',
+  var_num = 'B'
+)
+
+title = glue('Map {map_num}: Home Value Predictions\nFinal Model on Full Dataset')
+grid.arrange(
+  Var1_map,
+  Var2_map,
+  #Var3_map,
+  #Var4_map,
+  ncol=2,
+  top = grid::textGrob(title,gp=grid::gpar(fontsize=15))
+)
+
+```
+   
+

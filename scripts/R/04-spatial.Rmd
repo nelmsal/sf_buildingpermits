@@ -1,0 +1,801 @@
+
+Section 3 was able to create a method of predicting housing prices for homes in Boulder County. Even though the independent variables used to predict housing prices included spatial features, the results were not spatially visualized or analyzed.
+
+> There are three things that matter in property:
+> **location, location, location**
+> 
+>  --- *Lord Harold Samuel*
+
+In this section, the study will examine if the housing price predictions are spatially correlated. The process follows
+
+1. lagging predicted Price & Errors by their neighbors, 
+
+2. evaluating our predictions by the home's neighborhoods, and
+
+3. splitting the predictions by the county's area median household income $86k.
+
+##  Spatial Lag
+
+The first part of our spatial analysis is understanding how prices are related to their neighbors. 
+
+Since our test data is point-based and dispersed, we use the 5 closest neighbors to create a weight matrix of the dataset. If we had polygon data, we could relate neighbors by touching. If our point data was more evenly dispersed, we could find neighbors based on a set distance.
+
+```{r setup_all_SpatialLag}
+
+boulder.test.weights = 
+  boulder.test %>%
+  # all coordinates
+  st_coordinates(.) %>%
+  # 5-nearest neighbor list
+  knearneigh(., 5) %>%
+  knn2nb(.) %>% 
+  # spatial weights
+  nb2listw(., style="W")
+
+boulder.test = 
+  boulder.test %>%
+  mutate(
+    price.lag = 
+      lag.listw(boulder.test.weights, price.predict),
+    price.error.lag = 
+      lag.listw(boulder.test.weights, price.error)
+  )
+
+```
+
+###  Scatterplot of Spatial Lag and Errors
+
+The scatter plots show that the spatial lag in price and error are smaller than the predicter values. This is essentially due to the error and price being evened out amoung the 5 nearest neighbors. 
+
+In many cases the 5-NN will provide a better idea of the average price of an area. At the same time, the large geographic spread of houses in the test dataset may dilute the individuality of houses whose closest 5 neighbors are significantly distant. 
+
+```{r plot_test_SpatialLag}
+
+fig_num = 8
+
+title = glue('Figure {fig_num}: Home Value Predictions with Spatial Lag')
+grid.arrange(ncol=2,
+  ggplot(boulder.test, aes(price.lag, price.predict)) +
+    geom_point() +
+    stat_smooth(aes(price.lag, price.predict), 
+               method = "lm", se = FALSE, size = 1, colour="#FA7800")+
+    scale_x_continuous(labels=money_format) + 
+    scale_y_continuous(labels=money_format) + 
+    labs(subtitle = "Predicted Price & Price Lag") +
+    plotTheme(),
+
+  ggplot(boulder.test, aes(price.error.lag, price.error)) +
+    geom_point() +
+    stat_smooth(aes(price.error.lag, price.error), 
+               method = "lm", se = FALSE, size = 1, colour="#FA7800")+
+    scale_x_continuous(labels=money_format) + 
+    scale_y_continuous(labels=money_format) + 
+    labs(subtitle = "Predicted Price & Error Lag") +
+    plotTheme(),
+ 
+  # ggplot(boulder.test, aes(price.lag, price)) +
+  #   geom_point() +
+  #   stat_smooth(aes(price.lag, price), 
+  #              method = "lm", se = FALSE, size = 1, colour="green")+
+  #   scale_x_continuous(labels=money_format) + 
+  #   scale_y_continuous(labels=money_format) + 
+  #   labs(subtitle = "Observed Price & Price Lag") +
+  #   plotTheme(),
+  # 
+  # ggplot(boulder.test, aes(price.error.lag, price)) +
+  #   geom_point() +
+  #   stat_smooth(aes(price.error.lag, price), 
+  #              method = "lm", se = FALSE, size = 1, colour="green")+
+  #   scale_x_continuous(labels=money_format) + 
+  #   scale_y_continuous(labels=money_format) + 
+  #   labs(subtitle = "Predicted Price & Error Lag") +
+  #   plotTheme(),
+  
+  top = grid::textGrob(title,gp=grid::gpar(fontsize=15))
+)
+
+```
+
+
+
+###  Moran's I of Errors
+
+Moran's I measures the similarity of an observation's value to its neighbors. To make that Moran's I more impactful, we will perfom a permutations test. Essentially, the test randomizes the neighbor's relationships then reevaluates the Moran's I statistic -- 999 times. 
+
+The histogram's grey distribution (Figure 9) displays the 999 Moran's I of Errors after the neighbors were randomized. The orange bar displayed the observed Error's Moran's I. The observed errors being significantly to the right of the distrubution suggests there is a significant spatial quality to the errors. 
+
+```{r plot_test_MoransI}
+
+fig_num = 9
+
+boulder.test.MoransI = 
+  moran.mc(
+    boulder.test$price.error,
+    boulder.test.weights, 
+    nsim = 999
+    )
+
+boulder.test.MoransI %>% str()
+
+ggplot(
+    boulder.test.MoransI$res[c(1:999)] %>% as.data.frame(), 
+    aes(boulder.test.MoransI$res[c(1:999)])
+  ) +
+  geom_histogram(binwidth = 0.01) +
+  geom_vline(
+    aes(xintercept = boulder.test.MoransI$statistic), 
+    colour = "#FA7800",size=1) +
+  #scale_x_continuous(limits = c(-1, 1)) +
+  labs(
+    title=glue("Figure {fig_num}: Observed and Permuted Moran's I Errors"),
+    subtitle= "Observed Moran's I in orange",
+    x="Moran's I",
+    y="Count") +
+  plotTheme()
+
+```
+
+###  Maps of Test Set Errors
+
+The Maps below give us better insight on the spatially laged prices and errors. 
+
+Overally for price (Maps A & B), you can see the higher priced homes in the suburbs of NW Boulder, NW Lafayette-Louisville, and SW Longmont. The lagged areas, although faint, have less variability in prices. Looking at the rural houses in Western Boulder County, the spatially lagged prices lean more towards the middle bracket of $.5-1 million -- as high-valued ranch houses have the nearest neighbors of run-down homes.
+
+The error maps (C & D) help explain the over- & under- estimated homes -- discussed in Section 3's Test Scatterplot (Figure 5). The city of boulder has a significant under-estimation city wide. The 'in city' variable could be a major factor as it weighs down the entire city's values. 
+
+```{r map_all_predict, fig.width = 8, fig.height = 10}
+
+map_num = 5
+
+title = glue('Map {map_num}: Predictions & Spatially Lagged Prices & Errors\nsummed by fishnet')
+
+boulder.test = 
+  boulder.test %>%
+  st_join(
+    .,
+    boulder.fishnet,
+    suffix = c("", ".dupe_join")
+  ) %>%
+  select(-ends_with(".dupe_join"))
+
+boulder.test.fishnet = 
+  merge(
+    boulder.fishnet,
+    boulder.test %>%
+      mutate(count.homes = 1) %>%
+      st_drop_geometry() %>%
+      group_by(id.fishnet) %>%
+      summarize(
+        count.homes = sum(count.homes, na.rm=TRUE),
+        MAE = mean(price.abserror, na.rm=TRUE),
+        ME  = mean(price.error, na.rm=TRUE),
+        MPE = mean(price.abserror / price, na.rm=TRUE),
+        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price  = mean(price, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price.lag       = mean(price.lag, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price.error.lag = mean(price.error.lag, na.rm=TRUE) %>%
+          as.numeric()
+      ),
+    on='id.fishnet'
+  )%>%
+  mutate(
+    count.homes = replace_na(count.homes, 0),
+    avg.price.lag = replace_na(avg.price.lag, 0),
+    avg.price.error.lag = replace_na(avg.price.error.lag, 0)
+    )
+
+Var1_map = var_cut_map(
+  focus_sf = boulder.test.fishnet,
+  var_field = 'avg.price.predict',
+  focus_pal = "Greens 3",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0, 50000,250000,500000,1000000),
+  var_title = 'Predicted Prices',
+  var_legend = 'Mean Predicted\nPrice',
+  var_num = 'A'
+)
+
+Var2_map = var_cut_map(
+  focus_sf = boulder.test.fishnet,
+  var_field = 'avg.price.lag',
+  focus_pal = "Teal",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0, 250000, 500000,1000000),
+  var_title = 'Lagged Predicted Prices',
+  var_legend = 'Mean Price\nw/ Spatial Weights Lag',
+  var_num = 'B'
+)
+
+min_me = min(boulder.test.fishnet[['ME']])
+Var3_map = var_cut_map(
+  focus_sf = boulder.test.fishnet,
+  var_field = 'ME',
+  focus_pal = "Green-Orange",
+  pal_rev = TRUE,
+  var_breaks_nomax = 
+    c(min_me, -500000, -249999, -4999, 5000, 250000, 500000),
+  var_title = "Errors",
+  var_legend = 'Mean of Price\n - Prediction',
+  var_num = 'C',
+  thousand = TRUE
+)
+
+min_me = min(boulder.test.fishnet[['avg.price.error.lag']])
+Var4_map = var_cut_map(
+  focus_sf = boulder.test.fishnet,
+  var_field = 'avg.price.error.lag',
+  focus_pal = "Tropic",
+  pal_rev = TRUE,
+  var_breaks_nomax = 
+    c(min_me, -500000, -249999, -4999, 5000, 250000, 500000),
+  var_title = "Lagged Errors",
+  var_legend = 'Mean of Errors\nw/ Spatial Lag',
+  var_num = 'D',
+  thousand = TRUE
+)
+
+
+grid.arrange(
+  Var1_map,
+  Var2_map,
+  Var3_map,
+  Var4_map,
+  ncol=2,
+  top = grid::textGrob(title,gp=grid::gpar(fontsize=15))
+)
+```
+
+
+
+##  Neighborhood Analysis
+
+The spatial lag helps estimate narrative behind the errors on a house-to-house basis. By averaging the houses by neighborhood, it could highlight larger geographic patterns. Primarily we will be comparing the original testing model to one that includes neighborhoods.  
+
+We are using voting precincts as a replacement for not finding consistent county-wide neighborhood data. The precincts, however, are fairly evenly distributed across the population. 
+
+To make a note, there are two precincts near the University of Boulder that don't have any housing sales from the dataset. This is due to the students being poor and too busy procrastinating on a month-overdue project. 
+
+```{r setup_test_nhood_predict}
+
+tab_num = 7
+
+#neighborhood regression
+lm.test.nhood = 
+  lm(
+    price ~ ., 
+    data = boulder.test %>% 
+      select(c('nhood_id', 'price', var.ivs)) %>%
+      st_drop_geometry()
+    )
+
+boulder.test.nhood =
+  boulder.test %>%
+  mutate(
+    regression      = "Neighborhood Effects",
+    price.predict   = 
+      predict(
+        lm.test.nhood, 
+        .), 
+    # residuals
+    price.error     = price - price.predict,
+    price.rmse      = sqrt(mean((price.error)^2)),
+    price.abserror  = abs(price.predict - price), 
+    price.ape       = price.abserror / price,
+    
+    price.error.lag = lag.listw(boulder.test.weights, price.error)
+    )
+
+boulder.test.linear_nhood =
+  rbind(
+    boulder.test,
+    boulder.test.nhood
+  )
+```
+
+###  Table of Errors
+
+The Table highlights the drastic change between the Testing Model & Neighborhood Model. The neighborhood variable drastically reduce the error -- probably as the model can now better link prices and other variables based on their neighbors.
+
+
+``` {r table_nhood, results = "asis"}
+
+tab_num = 8
+
+boulder.test.linear_nhood %>%
+  select(regression, price.abserror, price.ape) %>%
+  st_drop_geometry(.) %>%
+  gather(Variable, Value, -regression) %>%
+  filter(Variable == "price.abserror" | Variable == "price.ape") %>%
+  group_by(regression, Variable) %>%
+    summarize(meanValue = mean(Value, na.rm = T)) %>%
+    spread(Variable, meanValue) %>%
+  mutate(
+    price.abserror = price.abserror %>% money_format(),
+    price.ape = price.ape %>% percent_formatter()
+  ) %>%
+    kable(label = NA, caption = glue("Table {tab_num}: Neighbors Effect on Error")) %>%
+    kable_styling()
+
+```
+
+### Plot of Price
+
+The plots highlight the difference in Observed & Predicted Price between the test & neighborhood regressions. The neighborhood regression appears to have less variance around the perfect prediction line (orange). The testing regression appear to be missing the higher valued homes that the neighborhood predictions and observed prices have.
+
+```{r plot_nhood_var}
+
+fig_num = 10
+
+ggplot(boulder.test.linear_nhood, aes(price, price.predict)) +
+  geom_point() +
+  stat_smooth(aes(price, price),
+             method = "lm", se = FALSE, size = 1.25, colour="#FA7800") +
+  stat_smooth(aes(price.predict, price),
+              method = "lm", se = FALSE, size = 1.25, colour="#25CB10") +
+  facet_wrap(~regression) +
+  scale_x_continuous(labels=money_format) + 
+  scale_y_continuous(labels=money_format, limits = c(0,4*m)) + 
+  # xlim(min(boulder.test.linear_nhood$price,0), 
+  #      max(boulder.test.linear_nhood$price)) + 
+  # ylim(min(boulder.test.linear_nhood$price.predict,0), 
+  #      max(boulder.test.linear_nhood$price.predict)) + 
+  labs(title=glue("Figure {fig_num}: Predicted Sale Price and Observed Price"),
+       subtitle="Orange line represents a perfect prediction; Green line represents model's prediction") +
+  plotTheme() + theme(plot.title = element_text(size = 18, colour = "black"))
+
+```
+
+###  Maps
+
+The maps plot both the neighborhood's mean percent error (MPE) and absolute percent error (MAPE). 
+
+Comparing the MPE of the Testing & Neighborhood models (Maps A & B), the Testing model has more variation of error with more tracts in the farthest under- and over- estimations. For the neighborhood maps, the city of Boulder (that has signifigant under-estimations) now has slight over-estimations.  
+
+The MAPE maps opposite highlights that the overall errors as a whole degress. The City of Longmont is a good example as the entire city moves down 10-20% in errors in the neighborhood model.
+
+
+```{r map_nhood_predict, fig.width = 8, fig.height = 10}
+
+map_num = 6
+
+boulder.test.linear_nhood$regression %>% unique()
+
+boulder.test.nhood.linear = 
+  merge(
+    boulder.nhoods,
+    boulder.test.linear_nhood %>%
+      filter(regression == 'Boulder Test Regression') %>% 
+      mutate(count.homes = 1) %>%
+      st_drop_geometry() %>%
+      group_by(nhood_id) %>%
+      summarize(
+        count.homes = sum(count.homes, na.rm=TRUE),
+        MAE = mean(price.abserror, na.rm=TRUE),
+        ME  = mean(price.error, na.rm=TRUE),
+        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
+        MAPE = ifelse(MAPE>100, 100, MAPE),
+        MPE = mean(price.error / price, na.rm=TRUE) * 100,
+        MPE = ifelse(MPE<=-100, -100, MPE),
+        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price  = mean(price, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price.lag       = mean(price.lag, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price.error.lag = mean(price.error.lag, na.rm=TRUE) %>%
+          as.numeric()
+      ),
+    on='nhood_id',
+    all.x = TRUE
+  ) %>%
+  mutate(
+    count.homes = replace_na(count.homes, 0),
+    avg.price.lag = replace_na(avg.price.lag, 0),
+    avg.price.error.lag = replace_na(avg.price.error.lag, 0),
+    avg.price.predict = replace_na(avg.price.predict, 0),
+    avg.price = replace_na(avg.price, 0),
+    MAPE = replace_na(MAPE, 0),
+    ME = replace_na(ME, 0),
+    MPE = replace_na(MPE, 0)
+    )
+
+
+boulder.test.nhood.nhood = 
+  merge(
+    boulder.nhoods,
+    boulder.test.linear_nhood %>%
+      filter(regression == "Neighborhood Effects") %>% 
+      mutate(count.homes = 1) %>%
+      st_drop_geometry() %>%
+      group_by(nhood_id) %>%
+      summarize(
+        count.homes = sum(count.homes, na.rm=TRUE),
+        MAE = mean(price.abserror, na.rm=TRUE),
+        ME  = mean(price.error, na.rm=TRUE),
+        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
+        MAPE = ifelse(MAPE>100, 100, MAPE),
+        MPE = mean(price.error / price, na.rm=TRUE) * 100,
+        MPE = ifelse(MPE<=-100, -100, MPE),
+        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price  = mean(price, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price.lag       = mean(price.lag, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price.error.lag = mean(price.error.lag, na.rm=TRUE) %>%
+          as.numeric()
+      ),
+    on='nhood_id',
+    all.x = TRUE
+  ) %>%
+  mutate(
+    count.homes = replace_na(count.homes, 0),
+    avg.price.lag = replace_na(avg.price.lag, 0),
+    avg.price.error.lag = replace_na(avg.price.error.lag, 0),
+    avg.price.predict = replace_na(avg.price.predict, 0),
+    avg.price = replace_na(avg.price, 0),
+    MAPE = replace_na(MAPE, 0),
+    ME = replace_na(ME, 0),
+    MPE = replace_na(MPE, 0)
+    )
+
+
+Var1_map = var_cut_map(
+  focus_sf = boulder.test.nhood.linear,
+  var_field = 'MPE',
+  focus_pal = "ArmyRose",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(-100, -10, -5, 0, 5, 10),
+  var_title = 'Test Linear Model MPE',
+  var_legend = 'Mean Percent of\nPredicted - Observed',
+  var_num = 'A'
+)
+
+Var2_map = var_cut_map(
+  focus_sf = boulder.test.nhood.linear,
+  var_field = 'MAPE',
+  focus_pal = "Peach",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0, 10, 20, 40, 60),
+  var_title = 'Test Linear Model MAPE',
+  var_legend = 'Mean Absolute\nPercentage Error',
+  var_num = 'B'
+)
+
+Var3_map = var_cut_map(
+  focus_sf = boulder.test.nhood.nhood,
+  var_field = 'MPE',
+  focus_pal = "ArmyRose",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(-100, -10, -5, 0, 5, 10),
+  var_title = 'Neighborhood Model MPE',
+  var_legend = 'Mean Percent of\nPredicted - Observed',
+  var_num = 'C'
+)
+
+Var4_map = var_cut_map(
+  focus_sf = boulder.test.nhood.nhood,
+  var_field = 'MAPE',
+  focus_pal = "Peach",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0, 10, 20, 40, 60),
+  var_title = 'Neighborhood Model MAPE',
+  var_legend = 'Mean Absolute\nPercentage Error',
+  var_num = 'D'
+)
+
+title = glue('Map {map_num}: Home Value Predictions by Neighborhood')
+grid.arrange(
+  Var1_map,
+  Var2_map,
+  Var3_map,
+  Var4_map,
+  ncol=2,
+  top = grid::textGrob(title,gp=grid::gpar(fontsize=15))
+)
+
+```
+
+### Plot of Errors
+
+The scatterplots highlight the trends we discussed in the price plots and maps. The Neighborhood model has more clustered errors with price. At the same time, a new trend emerges, specifically the house predictions with little to no error. 
+
+```{r plot_nhood_MAPE}
+#plot of MAPE by neighbors as a function of mean price by neighbors
+
+fig_num = 11
+
+lin_nhood_plot = plot(
+    boulder.test.nhood.linear %>% 
+      filter(avg.price.predict>0) %>% 
+      pull(avg.price.predict), 
+    boulder.test.nhood.linear %>% 
+      filter(avg.price.predict>0) %>% 
+      pull(MAPE), 
+    main=list("Test Linear Model",font = 3), 
+    xlab="Mean Predicted Price", 
+    ylab="MAPE by neighbors")
+
+nhood_nhood_plot = plot(
+    boulder.test.nhood.nhood %>% 
+      filter(avg.price.predict>0) %>% 
+      pull(avg.price.predict), 
+    boulder.test.nhood.nhood %>% 
+      filter(avg.price.predict>0) %>% 
+      pull(MAPE), 
+    main=list("Neighborhood Effects Model",font = 3), 
+    xlab="Mean Predicted Price", 
+    ylab="MAPE by neighbors")
+
+#plot.new()
+par(mfrow=c(1,2), oma=c(0,0,2,0))
+
+Title = glue("Figure {fig_num}: MAPE & Predicted Price by Neighborhood")
+mtext(Title, line=0, side=3, outer=TRUE, font=2, cex = 1.5
+      )
+
+lin_nhood_plot
+nhood_nhood_plot
+
+
+```
+
+## 	Split by Median Income
+
+For many local governments, the area's median income is one of the primary descriptors of an area -- especially for affordable housing discussions and standards. To understand the housing sales, we split Boulder County by Census Tracts above or below the area's median household income ($86k).  
+
+```{r test_tidycensus}
+
+boulder.tracts.AMI = 
+  boulder.tracts.2019 %>%
+  mutate(tract.HH.income = ifelse(tract.HH.income>0, tract.HH.income, NA)) %>%
+  group_by(above.AMI) %>%
+  summarize(
+    tract.pop = sum(tract.pop),
+    tract.units = sum(tract.units),
+    geometry = st_union(geometry),
+    AMI = mean(tract.HH.income, na.rm=TRUE),
+    tract.area.sqft = st_area(geometry) %>% as.numeric(), 
+    tract.area.mile = tract.area.sqft / sqmile,
+    tract.pop.density = tract.pop/tract.area.sqft
+    )
+
+boulder.AMI.test = 
+  merge(
+    boulder.tracts.AMI,
+    boulder.test.linear_nhood %>%
+      filter(regression == 'Boulder Test Regression') %>%
+      mutate(count.homes = 1) %>%
+      st_drop_geometry() %>%
+      group_by(above.AMI) %>%
+      summarize(
+        count.homes = sum(count.homes, na.rm=TRUE),
+        MAE = mean(price.abserror, na.rm=TRUE),
+        ME  = mean(price.error, na.rm=TRUE),
+        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
+        MPE = mean(price.error / price, na.rm=TRUE) * 100,
+        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price  = mean(price, na.rm=TRUE) %>%
+          as.numeric()
+      ),
+    on='above.AMI'
+  ) %>%
+  mutate(
+    count.homes = replace_na(count.homes, 0),
+    avg.price.predict = replace_na(avg.price.predict, 0),
+    avg.price = replace_na(avg.price, 0),
+    MAPE = replace_na(MAPE, 0),
+    ME = replace_na(ME, 0),
+    MPE = replace_na(MPE, 0)
+    )
+
+
+boulder.AMI.nhood = 
+  merge(
+    boulder.tracts.AMI,
+    boulder.test.linear_nhood %>%
+      filter(regression == "Neighborhood Effects") %>%
+      mutate(count.homes = 1) %>%
+      st_drop_geometry() %>%
+      group_by(above.AMI) %>%
+      summarize(
+        count.homes = sum(count.homes, na.rm=TRUE),
+        MAE = mean(price.abserror, na.rm=TRUE),
+        ME  = mean(price.error, na.rm=TRUE),
+        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
+        MPE = mean(price.error / price, na.rm=TRUE) * 100,
+        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+          as.numeric(),
+        avg.price  = mean(price, na.rm=TRUE) %>%
+          as.numeric()
+      ),
+    on='above.AMI'
+  ) %>%
+  mutate(
+    count.homes = replace_na(count.homes, 0),
+    avg.price.predict = replace_na(avg.price.predict, 0),
+    avg.price = replace_na(avg.price, 0),
+    MAPE = replace_na(MAPE, 0),
+    ME = replace_na(ME, 0),
+    MPE = replace_na(MPE, 0)
+    )
+```
+
+
+###  Maps
+
+The maps highlight which areas are about and below the Area's Median Income (AMI). The census tracts in the suburbs of the main cities are the primary ones about the AMI and comprise about 26% of the test dataset's observations.
+
+``` {r plots_ami, fig.width = 8}
+
+739/(2031+739)
+
+library(grid)
+
+map_num = 7
+
+var_binary_map = function(
+  focus_sf = boulder.predict.0.fishnet,
+  var_field = 'avg.bedrooms',
+  focus_pal = "YlOrRd",
+  pal_rev = FALSE,
+  var_breaks_nomax = c(0,1,2,3, 5),
+  var_title = 'Average Bedrooms',
+  var_legend = 'Average Bedrooms',
+  var_num = 'A'
+  ){
+  focus_sf[[var_field]] = focus_sf[[var_field]] %>% as.character()
+  focus_length = length(unique(focus_sf[[var_field]]))
+  var_pal = hcl.colors(focus_length, #-1, 
+                       alpha=.95, palette = focus_pal,
+                       rev = pal_rev)
+  fish_vars_map = function(focus_sf = focus_sf, cut_field = new_var_field,
+                           cut_pal=var_pal, cut_breaks = var_breaks,
+                           sub_num='A', map_title = ' ', legend_title=NULL
+                           ){
+    ggplot() +
+      geom_sf(data = focus_sf, aes_string(fill = var_field), color = NA) +
+      scale_fill_manual(
+        values = cut_pal, 
+        name= legend_title) + 
+      #geom_cities(data=boulder.cities %>% filter(incorporated=='city'), color='grey10') +
+      geom_county() + 
+      geom_text_sf(sf_to_labels(boulder.cities %>% filter(incorporated=='city'), 'name')) +
+      labs(
+        #title='', 
+        subtitle = glue("Map {map_num}.{sub_num}. {map_title}"))+ 
+      theme(legend.position = "bottom",
+          legend.spacing.x = unit(.1, 'in')) +
+      guides(fill=guide_legend(nrow=2,byrow=TRUE)) +
+      mapTheme()}
+  
+  return(fish_vars_map(focus_sf = focus_sf, cut_field = new_var_field,
+                cut_pal=var_pal, cut_breaks = var_breaks,
+                sub_num=var_num, map_title = var_title, legend_title=var_legend))}
+
+Var1_map = var_binary_map(
+  focus_sf = boulder.AMI.test %>%
+    mutate(above.AMI =ifelse(above.AMI==1,
+                             "Above $86k",
+                             "Below $86k"
+                             )),
+  var_field = 'above.AMI',
+  focus_pal = "Green-Orange",
+  pal_rev = FALSE,
+  var_breaks_nomax = c(0),
+  var_title = "Census Tracts above or below the Area's Median Income",
+  var_legend = "Tracts with Income\nabove/below County's 2019\nMedian Household Income",
+  var_num = 'A'
+)
+
+
+Var2_map = var_binary_map(
+  focus_sf = boulder.AMI.test,
+  var_field = 'count.homes',
+  focus_pal = "Temps",
+  pal_rev = TRUE,
+  var_title = 'Count of Homes by Above/Below AMI',
+  var_legend = 'Count of Homes Sales\nin Test Dataset',
+  var_num = 'B'
+)
+
+Var3_map = var_binary_map(
+  focus_sf = boulder.AMI.test %>%
+    mutate(MAPE = MAPE %>% 
+             round(1) %>%
+             paste0(., "%")
+             ),
+  var_field = 'MAPE',
+  focus_pal = "Peach",
+  pal_rev = TRUE,
+  var_title = 'Test Linear Model MAPE',
+  var_legend = 'Mean Absolute\nPercentage Error',
+  var_num = 'C'
+)
+
+Var4_map = var_binary_map(
+  focus_sf = boulder.AMI.nhood %>%
+    mutate(MAPE = MAPE %>% 
+             round(1) %>%
+             paste0(., "%")
+             ),
+  var_field = 'MAPE',
+  focus_pal = "Peach",
+  pal_rev = TRUE,
+  var_title = 'Neighborhood Effects Model MAPE',
+  var_legend = 'Mean Absolute\nPercentage Error',
+  var_num = 'D'
+)
+
+title = glue('Map {map_num}: Home Value Predictions by Neighborhood')
+grid.arrange(
+  Var1_map,
+  Var2_map,
+  ncol=2,
+  top = grid::textGrob(title,gp=grid::gpar(fontsize=15))
+)
+
+```
+
+###  Table by AMI
+
+The table shows the Test and Neighborhood Model predictions but splut by AMI. The tracts above AMI appear to have less error -- especially with the neighborhood model. There is a binary variable in the model that indicates if the house is in a tract above or below the AMI -- which dilutes the differences this table could have displayed. 
+
+``` {r table_ami, results = "asis"}
+
+tab_num = 9
+
+count_format = function(col) format(col, digits=0, big.mark = ",")
+proportion_format = function(col, digits=2) (col*100) %>%
+      round(., digits=digits) %>% paste(., '%',sep='')
+
+boulder.test.linear_nhood.AMI = 
+  boulder.test.linear_nhood %>%
+    mutate(count.homes = 1) %>%
+    group_by(regression, above.AMI) %>%
+    st_drop_geometry() %>%
+    summarize(
+        count.homes = sum(count.homes, na.rm=TRUE) %>%
+          count_format(),
+        MAPE = (mean(price.abserror / price, na.rm=TRUE)) %>%
+          proportion_format(digits=0),
+        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+          count_format() %>% paste("$",.),
+        avg.price  = mean(price, na.rm=TRUE) %>%
+          count_format() %>% paste("$",.)
+      ) %>%
+  ungroup()
+#eq = as.character(expression("="))
+count0 = boulder.test.linear_nhood.AMI$count.homes[1]
+count1 = boulder.test.linear_nhood.AMI$count.homes[2]
+
+header = c(1, 3,3)
+#names(header) <- c(' ', glue("Below AMI ({count0})"), glue("Above AMI ({count1})"))
+names(header) <- c(' ', glue("Below AMI"), glue("Above AMI"))
+
+split(boulder.test.linear_nhood.AMI, boulder.test.linear_nhood.AMI$above.AMI) %>%
+  lapply(., function(df) 
+    df %>% select(MAPE, avg.price, avg.price.predict)) %>%
+  do.call("cbind", .) %>%
+  cbind(
+    boulder.test.linear_nhood.AMI$regression %>% unique(), 
+    .) %>%
+  kable(.,
+        caption = glue('Table {tab_num}: Area Median Income by Model'),
+        align = 'lrrrrrr',
+        label = NA,
+        col.names = c(
+    'Model', 
+    'MAPE', 'Observed', "Predicted",
+    'MAPE', 'Observed', "Predicted"
+  )) %>%
+  kable_styling() %>%
+  add_header_above(
+    header = header)
+
+```
+

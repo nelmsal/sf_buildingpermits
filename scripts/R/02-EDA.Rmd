@@ -1,0 +1,876 @@
+
+Currently, we have 24 independent variables to potentially predict house sale prices. To have a have a powerful, undiluted model, we want to narrow down our selection of predictor variables to ones that:
+
+1. Have a significant relationship with the dependent variable ("price"), *and*
+
+2. Are not significantly related to other predictor variables 
+
+We will primarily be using a mix of correlation and independence statistical tests in an attempt to measure relationships (1) between predictors & house price, and (2) between the predictors themselves. If there is too much of a relationship between predictor variables then 'multicollinearity' develops -- where it becomes difficult to distinguish which variables are contributing to the model. 
+
+To analyze these relationships, we will:
+
+A. Separate variables by data type (e.g. continuous, discrete, binary)
+
+B. Look at Summary Statistics, Histograms & Scatterplots to understand their Distributions
+
+C. Analyze Correlation Matrices & Independence Tests
+
+D. Map out Variables & the Boulder County Area
+
+E. Choose the final variables
+
+## By Data Type
+
+It is important to understand and test variables by their data type. Not every statistical correlation or independence test can be used for ever data type or distribution. But it is still important to get an understanding of each variable.
+
+``` {r data_types}
+
+# vars.ivs.ordinal = c(
+#   'ele.rank', 'ele.score',
+#   'build.year.adj', 'build.year',
+#   'build.quality'
+#   )
+
+# var.df[
+#   var.df$var_name %in% vars.ivs.ordinal, 
+#   'data_type'] = 'ordinal'
+
+vars.ivs.disc = var.ivs.all[grepl(".pct.", var.ivs.all)]
+vars.ivs.cont = var.ivs.all[!grepl(".pct.", var.ivs.all)]
+```
+
+## Distributions
+*Summary Statistics, Histogram, Scatterplot*
+
+Before correlation tests, it will be important to visualize if their distribution is skewed and what the data looks like. 
+
+### Table
+*Summary Statistics*
+
+The table below summarizes the variables that we are looking at to predict housing prices in Boulder county. These variables do not indicate causal relationship with house prices. Instead, we are investigating if the presence of these observations can correlate to better predictions of what housing prices could be in the future. 
+
+
+``` {r table_predict0_vars,  messages=TRUE,  results='asis', echo = FALSE}
+
+tab_num = 1
+
+select_v = function(sf, variable_names=c(var.dv, var.ivs.all)){
+  return(sf %>% st_drop_geometry(.) %>%
+             select(variable_names))}
+
+select_iv = function(sf, variable_names=var.ivs.all){
+  return(sf %>% st_drop_geometry(.) %>%
+             select(variable_names))}
+
+table_title = glue("Table {tab_num}: Summary Statistics for San Francisco County")
+
+stargazer(sf.predict.0 %>% select_v(.), 
+          type="html", 
+          digits=1, no.space = TRUE, 
+          column.sep.width = "15pt",
+          title=table_title)
+
+```
+
+### Histogram
+
+These histograms of continuous values are important to understand how the data is distributed. To help, we are also visualizing two statistics to calculate,
+1. if the curve's distribution is skewed left or right: |Skewness| > 1
+2. if the curve has larger tails than a peak: Kurtosis > 3
+
+``` {r histograms_predict0_vars, warning=FALSE, fig.width=10, fig.height=8}
+
+fig_num = 1
+
+str_remove_vector = function(string, removing) str_remove_all(string, paste(removing, collapse = "|")) %>% str_trim()
+
+skewness = function(vector) sum((vector-mean(vector))^3)/((length(vector)-1)*sd(vector)^3)
+## Pearson’s Coefficient of Skewness
+## Skewness values and interpretation
+###  Symmetric:   -0.5 to 0.5
+###  Moderated:   -1 and -0.5; 0.5 and 1
+###  Highly:      less than -1; 1
+
+kurtosis = function(vector) sum((vector-mean(vector))^4)/((length(vector)-1)*sd(vector)^4)
+## Kurtosis values and interpretation
+###  Normal Peak (Mesokurtic): 3
+###  High Peak/Low Tail (Leptokurtic): >3
+###  Low Peak/High Tail (Platykurtic): <3
+
+plotting = function(
+  plot_df = sf.predict.0, variables = vars.ivs.cont[1], remove_zero=TRUE,
+  xlab_remove = c()
+  ){
+  P = list()
+  #vars = names(variables)[!names(variables)%in%c('channel','label')]
+  for (cont_var in variables){
+    iv_col = plot_df[[cont_var]] %>% na.omit()
+    skew = skewness(iv_col) %>% round(2)
+    kurt = kurtosis(iv_col) %>% round()
+    if(remove_zero==TRUE){
+      plot_df = plot_df %>% filter(.data[[cont_var]]>0)
+    }
+    xlab_var = str_remove_vector(cont_var, xlab_remove) %>% gsub('.',' ', ., fixed=TRUE)
+    p =
+      ggplot(data=plot_df, aes(x=.data[[cont_var]])) +
+        geom_histogram(color='grey50',  stat="count") +
+        scale_x_continuous(
+          labels=function(lab) ifelse(
+            as.numeric(lab)>20000, ifelse(
+              as.numeric(lab)>=500000,
+              paste(round(as.numeric(lab)/1000000,1),'m',sep=''),
+              paste(round(as.numeric(lab)/1000),'k',sep='')),
+            lab),
+          name = xlab_var
+          ) +
+        labs(
+          title=glue('{cont_var}'), 
+          subtitle=glue('Skewness: {skew}, Kurtosis: {kurt}')) + 
+        theme(legend.position="none",
+              axis.title.y = element_blank()
+              ) + plotTheme()
+    P = c(P, list(p))
+  }
+  return(list(plots=P, num=length(vars)))
+}
+
+PLOTS = plotting(sf.predict.0, 
+                 vars.ivs.cont %>% sort(), 
+                 xlab_remove = c('build','tract'))
+hist_plots = ggarrange(plotlist = PLOTS$plots)
+
+annotate_figure(hist_plots, 
+                top = text_grob(
+                  glue("Figure {fig_num}: Variable Histograms"), 
+                  face = "bold", size = 14))
+
+### ### ### ### ### ### #
+
+cont_skewed_stats = 
+  sf.predict.0 %>%
+  select(vars.ivs.cont) %>%
+  st_drop_geometry() %>%
+  apply(.,2, skewness)
+  
+# vars.ivs.cont.skew = cont_skewed_stats[abs(cont_skewed_stats)>1] %>% names(.)
+# var.df[var.df$var_name %in% vars.ivs.cont.skew, 'data_type'] = 'cont_skew'
+# 
+# vars.ivs.cont.notskew = vars.ivs.cont[!vars.ivs.cont %in% vars.ivs.cont.skew]
+# var.df[var.df$var_name %in% vars.ivs.cont.notskew, 'data_type'] = 'cont_notskew'
+
+```
+
+
+### Scatterplot
+*Price over Lot Size, Built Year, Bathrooms, & Elementary School Score*
+
+The below are an example of four predictor variables that we are looking at to assess how well they can be used to predict boulder house sales prices. These scatter plots also indicate whether the relationship can be predicted using a linear model, or if we need to utilize a different method for better fit. 
+
+```{r plot_predict_scatplot}
+
+fig_num = 2
+
+dependent_variable = 'price'
+
+plot_colors= c(
+  "blue", "green", "red", "orange"
+)
+
+second_max = function(vector){
+  vector_mx = max(vector)
+  vector_cut = 
+  vector[
+    vector<vector_mx]
+  return(max(vector_cut))
+}
+
+ylim_num = max(sf.predict.0$price)
+ylim = second_max(sf.predict.0$price)
+
+
+scat_vars = c('lot.sqft', 'build.year.adj','build.baths.adj', 'ele.score')
+scat_labs = c('Lot Square Footage', 'Build Year (Adjusted)', 'Bathrooms (Adjusted)', 'Elementary Scores')
+for (
+  variable_number in seq(length(scat_vars))
+){
+  plot_color = plot_colors[variable_number]
+  variable_name = scat_vars[variable_number]
+  variable_label = scat_labs[variable_number]
+  fm_equation = paste(dependent_variable, "~", variable_name, sep="")
+  
+  fm = as.formula(fm_equation)
+  price_variable = lm(fm, data = sf.predict.0)
+  coefficient = 
+    round(
+      price_variable$coefficients[variable_name][1], 2)
+  
+  scat_plot = 
+    ggplot(
+      data = sf.predict.0,
+      aes(
+        x = sf.predict.0[[variable_name]],
+        y = sf.predict.0$price)) +
+    geom_point(size=2, shape=20) +
+    labs(title = 
+           glue("Figure {fig_num}.{variable_number}: {variable_label}"),
+         subtitle = glue("{fm_equation}     Coefficient = ${coefficient %>% count_format()}")
+         ) +
+    geom_smooth(method = "lm", se=F,
+                color = plot_color) +
+    xlab(variable_name) +
+    ylab("price") +
+    ylim(min(sf.predict.0$price), ylim) + 
+    plotTheme()
+  print(scat_plot)
+}
+
+```
+
+
+## Correlation
+*Correlation Matrices, Independence Test*
+
+For Continuous & Ordinal variables, we will use a correlation matrix with a coefficient that measures the extent to which two variables tend to change together. 
+Specifically we will be using:
+
+1. A Pearson Correlation for Continuous Variables (Figure 3). 
+
+2. A Spearman Correlation for Ordinary and Skewed COntinous Variables (Figure 4). 
+
+3. For Binary Variables, we will have to use a T-Test measuring price & binary predictors (Figure 5). 
+
+Ordinal or Binary variables, for example, shouldn't use the typical Pearson correlation test. We will be following a [statistical test guide from UCLA](https://stats.idre.ucla.edu/other/mult-pkg/whatstat/).
+
+### Continous Variables
+*Pearson Correlation*
+
+For the Continuous Variables, we will use a Pearson correlation as it measures the linear relationship of the raw data. Any variables with a correlation value greater than 0.8 means they are related to each other. If those related variables are both predictors, then we only need to include one of them -- otherwise we are repeating the same information essentially. 
+
+``` {r corr_cont_pearson, fig.width=8, fig.height=8}
+
+fig_num = 3
+
+
+ggcorr_full = function(focus_df, #focus_vars= vars, 
+                       focus_var = var.dv, corrmethod = 'pearson',
+                       title=NULL, subtitle=NULL){
+  num = ncol(sf.cont)
+  
+  BC = 'white'
+  FC = "grey80"
+  
+  BL = 2
+  FL = .2
+  RL = 1:num-0.5
+  RL[1] = .1
+  ## RL[num] = .1
+  
+  library(reshape2)
+  
+  focus_df.melt = 
+    cor(focus_df, method=corrmethod) %>%
+    melt()
+  
+  
+  xfaces = focus_df.melt$Var1 %>% as.character() %>% unique()
+  yfaces = focus_df.melt$Var2 %>% as.character() %>% unique()
+  
+  change_focus = function(
+    focus_vector, focus, 
+    focus_change='bold', unfocus_change='plain'){
+    vector = focus_vector[]
+    vector[!(vector %in% c(focus))] = unfocus_change
+    vector[vector %in% c(focus)] = focus_change
+    return(vector)
+  }
+  
+  xfaces = change_focus(xfaces, focus_var)
+  yfaces = change_focus(yfaces, focus_var)
+  
+  focus_df.melt$value = 
+    focus_df.melt$value %>%
+    round(2)
+  
+  ggplot(focus_df.melt, aes(Var1, Var2, fill = value)) +
+    geom_tile(color = "white") +
+    geom_text(
+      aes(Var1, Var2, 
+          label = gsub("0\\.", "\\.", value)), 
+      color = "black", size = 4) +
+    scale_fill_gradient2(
+      ## grey95
+      low = "#6D9EC1", mid = "white", high = "#E46726",
+      midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal() +
+    coord_fixed() +
+    theme(
+          axis.text.x = 
+            element_text(
+              face = xfaces,
+              angle=45, vjust=1, hjust=1, 
+              margin=margin(-2,0,0,0)),
+          ## axis.text.x = element_text(margin=margin(-2,0,0,0)),  
+          ###  Order: top, right, bottom, left  
+          axis.text.y = 
+            element_text(
+              face = yfaces,
+              margin=margin(0,-2,0,0)),
+          axis.title.x=element_blank(),
+          axis.title.y=element_blank(),
+          legend.position="none") +
+    labs(title = title, subtitle=subtitle) + 
+    geom_vline(xintercept=RL, colour=BC, size=BL) +
+    geom_hline(yintercept=RL, colour=BC, size=BL) +
+    geom_vline(xintercept=RL, colour=FC, size=FL) +
+    geom_hline(yintercept=RL, colour=FC, size=FL)}
+```
+
+``` {r plot_corr, fig.width=8, fig.height=8}
+
+
+remove_col = c(
+  'hinc.tot.18',
+  #'units.tot.00_14',
+  'units.tot.00_04',
+  'units.tot.05_09',
+  'units.tot.10_14',
+  'permits.tot.00_04',
+  'permits.tot.05_09',
+  'permits.tot.10_14',
+  'hh.tot.18',
+  "permits.tot.00_14",
+  #"breach_lease.tot.10_19",
+  #"change_use.tot.10_19",
+  "reno.tot.10_19",
+  "renter_payment.tot.10_19",
+  "evictions.tot.10_19",
+  #"evictions.tot.00_19"
+  "pop.tot.18",
+  'white.tot.00',
+  'hh.tot.90',
+  'mov.pct.12',
+  'inc.med.12',
+  'hh_costs.med.18',
+  'hh_inc.med.90',
+  'mhval_ch.tot.12_18',
+  'occ_own.pct.90',
+  'occ_own.pct.18',
+  'occ_rent.pct.18',
+  'FAR.avg.2019',
+  'pop.tot.00',
+  'hh_inc.med.00'
+  )
+
+vars.ivs.cont_fin = vars.ivs.cont[!(vars.ivs.cont %in% remove_col)]
+
+len = length(vars.ivs.cont_fin)
+len_half = round(len/2)
+
+for (start in c(1,len_half)){
+  end = start+len_half
+  sf.cont = 
+    sf.predict.0 %>%
+    select(c(var.dv, vars.ivs.cont_fin[start:end])) %>% 
+    st_drop_geometry(.)
+  
+  plot = ggcorr_full(sf.cont,
+              title = glue("Figure {fig_num}: Pearson Correlation"),
+              subtitle = "Continous Variables"
+  )
+  print(plot)
+}
+
+vars.ivs.disc_fin = vars.ivs.disc[!(vars.ivs.disc %in% remove_col)]
+
+sf.cont = 
+  sf.predict.0 %>%
+  select(c(var.dv, vars.ivs.disc_fin)) %>% 
+  st_drop_geometry(.)
+
+plot = ggcorr_full(sf.cont,
+            title = glue("Figure {fig_num}: Pearson Correlation"),
+            subtitle = "Continous Variables"
+)
+print(plot)
+
+```
+
+## Maps
+
+Besides distribution plots & correlations, it is important to understand the larger spatial processes at play in variables.
+
+Boulder County has a variety of densities, urban patterns, and physical landscapes, so variables will change by location. In Section 4, there will be a heavier analysis of spatial differences of price and the predictions. 
+
+``` {r map_functions}
+
+geom_county = function(
+  data = sf.county,
+  fill = 'transparent', color='black',
+  lwd=1, ...
+  ){
+    c_plot = geom_sf(data = data, fill = fill, color=color,
+          lwd=lwd, ...)
+    return(c_plot)}
+
+geom_cities = function(
+  data = sf.cities,
+  fill = 'transparent', color='grey',
+  lwd=.1, linetype = "dashed",
+  ...
+  ){
+    c_plot = geom_sf(data = data, fill = fill, color=color,
+          lwd=lwd,linetype = linetype, ...)
+    return(c_plot)}
+
+plot_limits = function(
+  data = sf.cities$geometry,
+  ## buffer between plot's limits and the geometry 
+  ## (in unit of geometry column)
+  buffer = 0
+){
+  ## creates bounding box
+  poly.bbox =
+    data %>% st_union() %>%
+    ## buffers the geometry so the ultimate plot has margins
+    st_buffer(buffer) %>%
+    st_bbox()
+  return(
+    ## returns the 'coord_sf' function which you can add to any plot
+    coord_sf(
+      xlim = c(poly.bbox['xmin'], poly.bbox['xmax']),
+      ylim = c(poly.bbox['ymin'], poly.bbox['ymax']),
+      crs = st_crs(data)
+  ))}
+
+st_fishnet = function(focus_sf, cell_size=500){
+  focus_union = focus_sf %>% st_union()
+  fishnet = 
+    st_make_grid(
+      focus_union,
+      cellsize = cell_size, 
+      square = TRUE) %>%
+    st_intersection(focus_union) %>%
+    st_sf() %>%
+    mutate(id.fishnet = rownames(.))}
+
+abs_n = function(str_num) abs(as.numeric(str_num))
+
+format_thousand_million = function(lab) 
+  ifelse(abs_n(lab)>1,
+    ifelse(abs_n(lab)>20000, 
+      ifelse(abs_n(lab)>=500000,
+        paste(round(as.numeric(lab)/1000000,1),'m',sep=''),
+        paste(floor(as.numeric(lab)/1000),'k',sep='')),
+      lab) %>% 
+    str_remove(., "^0+") %>%
+    sub("0+$", "", .),
+  lab)
+
+label_breaks = function(
+  breaks, combiner = 'to', high_reduce=.1, 
+  zero_first = FALSE, above1k = FALSE
+  ){
+  blen = length(breaks)
+  idxs = seq(blen)
+  lows  = breaks[idxs[1:blen-1]]
+  highs = breaks[idxs[2:blen]] - high_reduce
+  highs[length(highs)] = highs[length(highs)] + high_reduce 
+  
+  if(above1k==TRUE){
+    highs[abs(highs)>=1000] = format_thousand_million(highs[abs(highs)>=1000])
+    lows[abs(lows)>=1000] = format_thousand_million(lows[abs(lows)>=1000])
+  }
+  
+  labels = paste(lows, combiner, highs)
+  if(zero_first==TRUE){labels[1] = "0"}
+  if(labels[1]=='0 to 0'){labels[1]='0'}
+  return(labels)
+}
+
+cutting_field = 
+  function(var_field, var_breaks) 
+    cut(var_field, breaks = var_breaks, dig.lab=10, include.lowest = TRUE)
+
+```
+
+To visualize the point data of home sales, we will be attaching them to half-mile fishnets. 
+
+``` {r map_fishnets, fig.width=8.5}
+
+## creating half-mile fishnets
+
+cell_size = .5 * mile
+
+sf.fishnet = 
+  st_fishnet(sf.county, cell_size=cell_size)
+
+sf.data = 
+  sf.data %>%
+  st_join(
+    .,
+    sf.fishnet,
+    suffix = c("", ".dupe_join")
+  ) %>%
+  select(-ends_with(".dupe_join"))
+
+sf.data.fishnet = 
+  merge(
+    sf.fishnet,
+    sf.data %>%
+      mutate(
+        count.homes = 1,
+        count.predicted = ifelse(toPredict=="0", 1, 0),
+        count.predicting = ifelse(toPredict=="1", 1, 0)
+      ) %>%
+      st_drop_geometry() %>%
+      group_by(id.fishnet) %>%
+      summarize(
+        count.homes = sum(count.homes),
+        count.predicted = sum(count.predicted),
+        count.predicting = sum(count.predicting),
+        avg.bedrooms = mean(build.bedrooms),
+        avg.baths.adj = mean(build.baths.adj),
+        avg.lot.sqft = mean(lot.sqft),
+        avg.build.year.adj = mean(build.year.adj) %>%
+          round()
+      ),
+    on='id.fishnet'
+  ) %>%
+  mutate(
+    count.homes = replace_na(count.homes, 0),
+    count.predicted = replace_na(count.predicted, 0),
+    count.predicting = replace_na(count.predicting, 0)
+    )
+
+```
+
+
+### Sales Locations
+
+These maps show the distribution of known and unknown home sales. If we want an accurate representation of the unknown sales, it is important to acknowledge that they are primarily in the urbanized areas of East Boulder County.
+
+``` {r map_sales}
+map_num = 1
+
+var_field = 'count.homes'
+mx = max(sf.data.fishnet[[var_field]])
+focus_length = length(unique(sf.data.fishnet[[var_field]]))
+#var_breaks = seq(0, ceiling_10(mx))
+var_breaks = c(0,1,5,15,50, mx)
+
+
+sf.data.fishnet$cut.homes = 
+  cutting_field(sf.data.fishnet[[var_field]], var_breaks)
+breaks_length = length(unique(sf.data.fishnet$cut.homes))
+
+#hcl.pals("diverging")
+###  "qualitative" "sequential" "diverging" "divergingx"
+###  https://developer.r-project.org/Blog/public/2019/04/01/hcl-based-color-palettes-in-grdevices/
+pal = hcl.colors(breaks_length-1, alpha=.95, palette = "PurpOr")
+pal = c('grey90',rev(pal))
+
+house_plot = 
+  ggplot() +
+    geom_sf(data = sf.data.fishnet, aes(fill = cut.homes), color = NA) +
+    scale_fill_manual(
+      values = pal, 
+      labels = label_breaks(var_breaks),
+      name=NULL) + 
+    geom_county() + 
+    geom_text_sf(sf_to_labels(
+      sf.cities %>% filter(incorporated=='city'), 
+      'name')) + 
+    labs(title = "All Home Sales") +
+    theme(legend.position = "bottom",
+        legend.spacing.x = unit(.1, 'in')) +
+    mapTheme()
+
+focus_pal = "Teal"
+var_field = 'count.predicted'
+sf.data.fishnet$cut.predicted = cutting_field(sf.data.fishnet[[var_field]], var_breaks)
+pal = hcl.colors(breaks_length-1, alpha=.95, palette = focus_pal)
+pal = c('grey90',rev(pal))
+
+title = 'Boulder County Housing Sales'
+
+predicted_plot = 
+  ggplot() +
+    geom_sf(data = sf.data.fishnet, aes(fill = cut.predicted), color = NA) +
+    scale_fill_manual(
+      values = pal, 
+      labels = label_breaks(var_breaks, zero_first=TRUE),
+      name=NULL) + 
+    #geom_cities(data=sf.cities %>% filter(incorporated=='city'), color='grey10', linetype='solid') + 
+    geom_county() + 
+    geom_text_sf(sf_to_labels(sf.cities %>% 
+                                filter(incorporated=='city'), 'name')) + 
+    labs(
+      title=title,
+      subtitle = glue("Map {map_num}.A. Homes with Known Sales")) +
+    theme(legend.position = "bottom",
+        legend.spacing.x = unit(.1, 'in')) +
+    mapTheme()
+
+focus_pal = "YlOrRd"
+var_field = 'count.predicting'
+sf.data.fishnet$cut.predicted = cutting_field(sf.data.fishnet[[var_field]], var_breaks)
+pal = hcl.colors(breaks_length-1, alpha=.95, palette = focus_pal)
+pal = c('grey90',pal)
+
+predicting_plot = 
+  ggplot() +
+    geom_sf(data = sf.data.fishnet, aes(fill = cut.predicted), color = NA) +
+    scale_fill_manual(
+      values = pal, 
+      labels = label_breaks(var_breaks, zero_first=TRUE),
+      name=NULL) + 
+    #geom_cities(data=sf.cities %>% filter(incorporated=='city'), color='grey10') +
+    geom_county() + 
+    geom_text_sf(sf_to_labels(sf.cities %>% filter(incorporated=='city'), 'name')) +
+    labs(
+      title='    ', 
+      subtitle = glue("Map {map_num}.B. Homes to Predict Sales"))+ 
+    theme(legend.position = "bottom",
+        legend.spacing.x = unit(.1, 'in')) +
+    mapTheme()
+
+
+map_grid = plot_grid(predicted_plot, predicting_plot , ncol=2)
+map_grid
+
+```
+
+###  Dependent & Independent Variables
+*Sales Price, Bedrooms, Lot Size, Build Year*
+
+Map 2 shows the housing sales and 3 dependent variables: Bedrooms, Lot Sizes, and Adjusted Build Year. The maps reaffirm the spatial concentrate of housing sales around major eastern county cities. The higher priced homes appear to be in the Boulder suburbs. Lower prices home locate in the inner-cities or far-west rural areas. 
+
+``` {r map_vars, fig.width = 8, fig.height = 10}
+
+map_num = 2
+
+sf.predict.0 = 
+  sf.predict.0 %>%
+  st_join(
+    .,
+    sf.fishnet,
+    suffix = c("", ".dupe_join")
+  ) %>%
+  select(-ends_with(".dupe_join"))
+
+sf.predict.0.fishnet = 
+  merge(
+    sf.fishnet,
+    sf.predict.0 %>%
+      mutate(count.homes = 1) %>%
+      st_drop_geometry() %>%
+      group_by(id.fishnet) %>%
+      summarize(
+        count.homes   = sum(count.homes),
+        avg.price     = mean(price),
+        avg.bedrooms  = mean(build.bedrooms),
+        avg.baths.adj = mean(build.baths.adj),
+        avg.lot.sqft  = mean(lot.sqft),
+        avg.build.year.adj = mean(build.year.adj) %>%
+          round()
+      ),
+    on='id.fishnet'
+  )%>%
+  mutate(count.homes = replace_na(count.homes, 0))
+
+var_cut_map = function(
+  focus_sf = sf.predict.0.fishnet,
+  var_field = 'avg.bedrooms',
+  focus_pal = "YlOrRd",
+  pal_rev = FALSE,
+  var_breaks_nomax = c(0,1,2,3, 5),
+  var_title = 'Average Bedrooms',
+  var_legend = 'Average Bedrooms',
+  var_num = 'A',
+  thousand=FALSE
+  ){
+  new_var_field = var_field %>% 
+    gsub('count','cut', .) %>% gsub('avg','cut', .)
+  mx = max(focus_sf[[var_field]]) %>% ceiling()
+  focus_length = length(unique(focus_sf[[var_field]]))
+  #var_breaks = seq(0, ceiling_10(mx))
+  var_breaks = c(var_breaks_nomax, mx)
+  focus_sf[[new_var_field]] = 
+    cutting_field(focus_sf[[var_field]], var_breaks)
+  breaks_length = length(unique(focus_sf[[new_var_field]]))
+  var_pal = hcl.colors(breaks_length, #-1, 
+                       alpha=.95, palette = focus_pal,
+                       rev = pal_rev)
+  #var_pal = c('grey90',var_pal)
+  
+  thousand = ifelse(thousand==TRUE,
+                     TRUE,
+                     ifelse(
+                       abs(var_breaks[3])>10000,
+                       TRUE,
+                      FALSE))
+  var_labels = 
+    label_breaks(var_breaks, 
+            high_reduce =
+              ifelse(abs(var_breaks[1])>0,1,.1), 
+            above1k = thousand)
+  
+  fish_vars_map = function(
+    focus_sf = focus_sf, 
+    cut_field = new_var_field,
+    cut_pal=var_pal, cut_breaks = var_breaks,
+    sub_num='A', map_title = ' ', 
+    legend_title=NULL,
+    cut_labels = var_labels
+    ){
+    ggplot() +
+      geom_sf(
+        data = focus_sf, 
+        aes_string(fill = new_var_field), color = NA) +
+      scale_fill_manual(
+        values = cut_pal, 
+        labels = cut_labels,
+        name=legend_title) + 
+      geom_county() + 
+      geom_text_sf(
+        sf_to_labels(sf.cities %>% 
+                       filter(incorporated=='city'), 'name')) +
+      labs(
+        subtitle = glue("Map {map_num}.{sub_num}. {map_title}"))+ 
+      theme(legend.position = "bottom",
+          legend.spacing.x = unit(.1, 'in')) +
+      guides(
+        fill=
+          guide_legend(
+            nrow=ifelse(length(cut_breaks)>5,3,2),
+            byrow=TRUE
+            )) +
+      mapTheme()}
+  
+  return(fish_vars_map(focus_sf = focus_sf, cut_field = new_var_field,
+                cut_pal=var_pal, cut_breaks = var_breaks,
+                sub_num=var_num, map_title = var_title, legend_title=var_legend))}
+
+
+Var1_map = var_cut_map(
+  var_field = "avg.price",
+  focus_pal = "Emrld",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(50000,250000,500000,1000000, 1500000),
+  var_title = 'Average Sales Price',
+  var_legend = 'Mean Sales\nPrice (USD)',
+  var_num = 'A'
+)
+
+Var2_map = var_cut_map(
+  var_field = 'avg.bedrooms',
+  focus_pal = "Red-Purple",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0,1,2,3, 5),
+  var_title = 'Average Bedrooms',
+  var_legend = 'Mean Amount\nof Bedrooms',
+  var_num = 'B'
+)
+
+sf.predict.0.fishnet$avg.lot.acre =
+  sf.predict.0.fishnet$avg.lot.sqft/acre
+
+Var3_map = var_cut_map(
+  var_field = 'avg.lot.acre',
+  focus_pal = "Heat",
+  pal_rev = TRUE,
+  var_breaks_nomax = c(0,.2,.5, 1, 2, 5),
+  var_title = "Average Lot Size",
+  var_legend = 'Mean Lot Size\nin Acres',
+  var_num = 'C'
+)
+
+Var4_map = var_cut_map(
+  var_field = 'avg.build.year.adj',
+  focus_pal = "Zissou 1",
+  pal_rev = FALSE,
+  var_breaks_nomax = c(1900,1940,1980, 2000),
+  var_title = "Average Build Year (Adjusted)",
+  var_legend = 'Mean Build Year\nAdjusted by Assessor\nafter Remodeling',
+  var_num = 'D')
+
+title = glue('Map {map_num}: Variables of Boulder Home Sales')
+grid.arrange(
+  Var1_map,
+  Var2_map,
+  Var3_map,
+  Var4_map,
+  ncol=2,
+  top = grid::textGrob(title,gp=grid::gpar(fontsize=15))
+)
+
+
+```
+
+The previously discussed process of urban/city/surban houses is more apparent in these maps. 
+
+###  Map of Voting Precincts/Neighborhoods 
+
+In a later spatial model test, we will be aggregating housing sales by neighborhoods. This map visualizes the voting precincts we will use like neighborhoods.
+
+``` {r map_nhood}
+map_num = 3
+ggplot() + 
+  geom_sf(
+    data = sf.nhoods, 
+    aes(fill=nhood_id), 
+    color='transparent',
+    lwd=0.1) + 
+  scale_fill_hue() + 
+  #geom_cities(lwd=0.1, color='grey25') + 
+  geom_cities(
+    sf.cities,
+    lwd=ifelse(sf.cities$incorporated=='city', .75,.1), color='grey50', linetype='solid'
+    ) + 
+  geom_county() + 
+  geom_text_sf(sf_to_labels(
+    sf.cities %>% filter(incorporated=='city'), 
+    'name')) + 
+  theme(legend.position = "none") + 
+  labs(title = glue("Map {map_num}. Voting Precincts Map")) + 
+  #plot_limits() + 
+  mapTheme()
+
+```
+
+
+## Feature Selection
+
+With the results of our figures, correlation matrices, independence tests, and maps, we can narrow our 27 predictor variables to just 13. The removed variables were mostly too related to other, more potent variables. 
+
+For example, the amount of rooms 'build.rooms' were too related to number of bathrooms, bedrooms, and living space square footage -- but had a relatively lower Pearson correlation to price. 
+
+
+``` {r final_vars}
+
+var.ivs = c(
+  
+  ## Continuous
+  "lot.sqft",
+  "build.living.sf",
+  "build.garage.sf",
+  "build.bedrooms",
+  "build.baths.adj",
+  "tract.HH.income",
+  
+  ## ordinal
+  "ele.score",
+  "build.year.adj",
+  "build.quality",
+  
+  ## binary
+  "build.hvac",
+  "build.bsmt.finished",
+  "in.city",
+  "above.AMI"
+)
+
+```
+
+-------------------------------
