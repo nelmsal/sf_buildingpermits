@@ -156,8 +156,8 @@ sf.test =
     units1519.error     = units.tot.15_19 - units1519.predict,
     units1519.rmse      = sqrt(mean((units1519.error)^2)),
     units1519.abserror  = abs(units1519.predict - units.tot.15_19), 
-    units1519.ape       = units1519.abserror / units.tot.15_19,
-    units1519.pe         = units1519.error / units.tot.15_19
+    units1519.ape       = units1519.abserror / ifelse(units.tot.15_19==0, 1, units.tot.15_19),
+    units1519.pe         = units1519.error / ifelse(units.tot.15_19==0, 1, units.tot.15_19)
     ) 
 
 # Mean Error
@@ -195,14 +195,11 @@ test.mean.prediction =
 
 data.frame(
   N = nrow(sf.test) %>% format_nums(),
-  `MAE` = test.MAE %>% format_nums()%>%
-      paste('$', .),
+  `MAE` = test.MAE %>% format_nums(),
   `MAPE` = 
-    (test.MAPE * 100) %>% round_thresh(
-      ., digits = 3, int_check = FALSE) %>%
-      paste(., '%'),
-  `RMSE` = test.RMSE %>% format_nums()%>%
-      paste('$', .)
+    (test.MAPE * 100), #%>% round_thresh(
+      #., digits = 3, int_check = FALSE),
+  `RMSE` = test.RMSE %>% format_nums()
   )%>%
   kable(
     label = NA,
@@ -262,56 +259,56 @@ percent_formatter = function(str) (str * 100) %>% round() %>% format(., big.mark
 
 
 grid.arrange(ncol=2,
-  ggplot(data = sf.test) +
+  ggplot(data = sf.test %>% filter(abs(units1519.error)<550)) +
     geom_point(aes(y = units.tot.15_19, x = units1519.error)) +
-    scale_x_continuous(breaks = negxmoney_breaks,
-                       labels = money_format,
-                       name = 'Price - Predicted Price') +
-    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) +
-    geom_vline_lim(xintercept=ME_1, ylim=c(0,2*m), color='#90ee90', size=1.25, linetype = "solid") + 
-        geom_vline_lim(xintercept=ME_2, 
-                       ylim=c(2*m,8*m), 
-                       color='#BF40BF', size=1.25, linetype = "solid") + 
-    #geom_vline(xintercept = test.ME, colour="#90ee90", size=1, linetype = "longdash") + 
+    # scale_x_continuous(breaks = negxmoney_breaks,
+    #                    labels = money_format,
+    #                    name = 'Price - Predicted Price') +
+    # scale_y_continuous(breaks = ymoney_breaks, labels = money_format) +
+    # geom_vline_lim(xintercept=ME_1, ylim=c(0,2*m), color='#90ee90', size=1.25, linetype = "solid") + 
+    #     geom_vline_lim(xintercept=ME_2, 
+    #                    ylim=c(2*m,8*m), 
+    #                    color='#BF40BF', size=1.25, linetype = "solid") + 
+    # #geom_vline(xintercept = test.ME, colour="#90ee90", size=1, linetype = "longdash") + 
     labs(title=title, subtitle = 
-           glue("Error (ME = {money_format(test.ME %>% round())})")) +
+           glue("Error (ME = {test.ME %>% round()})")) +
     plotTheme(),
 
   ggplot(data = sf.test %>% filter(units1519.ape<5)) +
     geom_point(aes(y = units.tot.15_19, x = units1519.pe)) +
-    scale_x_continuous(breaks = pe_breaks, name = 'Error / Price',
-                labels = percent_formatter(pe_breaks)) + 
-    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
-    geom_vline(xintercept = test.MPE, colour="#FF9B00", size=1, linetype = "longdash") + 
-    
-    geom_vline(xintercept = test.MPE, colour="#FF9B00", size=1, linetype = "longdash") + 
-    
+    # scale_x_continuous(breaks = pe_breaks, name = 'Error / Price',
+    #             labels = percent_formatter(pe_breaks)) + 
+    # scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
+    # geom_vline(xintercept = test.MPE, colour="#FF9B00", size=1, linetype = "longdash") + 
+    # 
+    # geom_vline(xintercept = test.MPE, colour="#FF9B00", size=1, linetype = "longdash") + 
+    # 
     labs(title='', subtitle = 
            glue("Percent Error (MPE = {percent_formatter(test.MPE)})")) +
     plotTheme(),
   
-  ggplot(data = sf.test) +
+  ggplot(data = sf.test%>% filter(abs(units1519.abserror)<550)) +
     geom_point(aes(y = units.tot.15_19, x = units1519.abserror)) +
-    scale_x_continuous(breaks = xmoney_breaks,
-                       labels = money_format,
-                       name = 'Absolute Error') + 
-    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
-    geom_line(color='red',data = 
-            data.frame(MAE_fit = predict(MAE_lm_fit, sf.test), 
-                       hp=sf.test$units1519.abserror), aes(x=hp, y=MAE_fit)) + 
-    geom_vline(xintercept = test.MAE, colour="#50c878", size=1, linetype = "longdash") + 
+    # scale_x_continuous(breaks = xmoney_breaks,
+    #                    labels = money_format,
+    #                    name = 'Absolute Error') + 
+    # scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
+    # geom_line(color='red',data = 
+    #         data.frame(MAE_fit = predict(MAE_lm_fit, sf.test), 
+    #                    hp=sf.test$units1519.abserror), aes(x=hp, y=MAE_fit)) + 
+    # geom_vline(xintercept = test.MAE, colour="#50c878", size=1, linetype = "longdash") + 
     labs(subtitle = 
-           glue("Absolute Error (MAE = {money_format(test.MAE %>% round())})")) +
+           glue("Absolute Error (MAE = {test.MAE %>% round()})")) +
     plotTheme(),
   
   ggplot(data = sf.test %>% filter(units1519.ape<5)) +
     geom_point(aes(y = units.tot.15_19, x = units1519.ape)) +
-    scale_x_continuous(breaks = ape_breaks, name = 'Absolute Percentage Error',
-               labels = percent_formatter(ape_breaks)) + 
-    scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
-    geom_vline(xintercept = test.MAPE, colour="#ff8c00", size=1, linetype = "longdash") + 
+    # scale_x_continuous(breaks = ape_breaks, name = 'Absolute Percentage Error',
+    #            labels = percent_formatter(ape_breaks)) + 
+    # scale_y_continuous(breaks = ymoney_breaks, labels = money_format) + 
+    # geom_vline(xintercept = test.MAPE, colour="#ff8c00", size=1, linetype = "longdash") + 
     labs(subtitle = 
-           glue("Absolute Percent Error (MAPE = {percent_formatter(test.MAPE)})")) + 
+           glue("Absolute Percent Error (MAPE = {test.MAPE})")) + 
     plotTheme()
 )
 
@@ -366,7 +363,8 @@ sf.predict.0.cv =
     # Residual
     units1519.error     = units.tot.15_19 - units1519.predict, 
     units1519.abserror = abs(units1519.predict - units.tot.15_19), 
-    units1519.ape      = (units1519.abserror / units.tot.15_19),
+    units1519.ape       = units1519.abserror / ifelse(units.tot.15_19==0, 1, units.tot.15_19),
+    units1519.pe         = units1519.error / ifelse(units.tot.15_19==0, 1, units.tot.15_19),
     
     units1519.SE = (units1519.error)^2,
     units1519.rmse  = sqrt(mean(units1519.SE))
@@ -477,10 +475,7 @@ sf.predict =
     units1519.ape      = (units1519.abserror / units.tot.15_19),
     
     units1519.rmse  = sqrt(mean((units1519.error)^2, na.rm=TRUE))
-  ) %>%
-  filter(
-    units.tot.15_19<price_max_threshold
-    )
+  )
 
 # sf.predict.1 %>%
 #   st_drop_geometry() %>%
@@ -512,15 +507,15 @@ line_min = min(max(sf.predict$units.tot.15_19), max(sf.predict$units1519.predict
 ggplot() +
     geom_point(data = sf.predict, aes(x = units.tot.15_19, y = units1519.predict)) +
     geom_smooth(data = sf.predict, aes(x = units.tot.15_19, y = units1519.predict), method = lm, color='green') + 
-    geom_line(data=data.frame(
-          x=c(0,line_min+1*m),
-          y=c(0,line_min+1*m)),
-          aes(x=x,y =y), linetype='dashed',
-                  size=1.25, color='orange') +
-    scale_x_continuous(breaks = c(0,1,1.5,2.5,5)*m,
-                       labels = money_format,
-                       name = 'Observed Price') +
-    scale_y_continuous(breaks = c(0,1,1.5,2.5)*m, labels = money_format, name = 'Predicted Price',) +
+    # geom_line(data=data.frame(
+    #       x=c(0,line_min+1*m),
+    #       y=c(0,line_min+1*m)),
+    #       aes(x=x,y =y), linetype='dashed',
+    #               size=1.25, color='orange') +
+    # scale_x_continuous(breaks = c(0,1,1.5,2.5,5)*m,
+    #                    #labels = money_format,
+    #                    name = 'Observed Price') +
+    # scale_y_continuous(breaks = c(0,1,1.5,2.5)*m, name = 'Predicted Price',) +
     labs(title=title,
       subtitle = "Final Predicted Housing Prices") +
     #xlim(min(sf.predict$price,0), max(sf.predict$price)) + 

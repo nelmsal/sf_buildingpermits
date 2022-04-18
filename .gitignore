@@ -18,3 +18,8 @@ data/raw/evict/ca_evict_unvalidated_blockgroups.csv
 *.shp
 *.shx
 .Rproj.user
+*.tmp
+*.tmp
+scripts/.RData
+scripts/.Rhistory
+deliverables/~$lms - Final Report.docx
