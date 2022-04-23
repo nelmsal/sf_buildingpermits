@@ -1,6 +1,9 @@
 # Classifying the Right-Of-Way for San Francisco
 *CPLN 650 Final Project* <br>by Alexander Nelms
 
+## Summary
+For my final project, I will be performing right-of-way semantic segmentation of satellite imagery. I want to understand which areas of the City of San Francisco are roads/right-of-way. I already have a polygon dataset of those right-of-ways, but I still need to find a proper set of rgb satellite images before cleaning them and developing the U-net model. 
+
 ## Deliverables
 | Date | Project | Location |
 | :---: | :--- | :---: |
@@ -11,9 +14,8 @@
 | Mar 10 | **Discussions** |  |
 | Mar 10 | **Project Chats** |  |
 
-For my final project, I will be performing right-of-way semantic segmentation of satellite imagery. I want to understand which areas of the City of San Francisco are roads/right-of-way. I already have a polygon dataset of those right-of-ways, but I still need to find a proper set of rgb satellite images before cleaning them and developing the U-net model. 
 
-**Project Steps:**
+##Project Steps
 	  *Find Data*
 1.	~~Create Github~~
 2.	~~Find Right-of-Way Polygons for San Francisco [(San Francisco Open GIS)](https://data.sfgov.org/City-Infrastructure/Right-of-Way-Polygons/a2mg-gwmg)~~
