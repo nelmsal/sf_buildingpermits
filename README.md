@@ -1,5 +1,5 @@
-# Building Permit Metrics of San Francisco
-*CPLN 680 Capstone* <br>by Alexander Nelms
+# Classifying the Right-Of-Way for San Francisco
+*CPLN 650 Final Project* <br>by Alexander Nelms
 
 ## Deliverables
 | Date | Project | Location |
