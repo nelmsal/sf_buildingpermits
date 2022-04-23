@@ -16,15 +16,18 @@ For my final project, I will be performing right-of-way semantic segmentation of
 
 
 ##Project Steps
-	  *Find Data*
+
+*Find Data*
 1.	~~Create Github~~
 2.	~~Find Right-of-Way Polygons for San Francisco [(San Francisco Open GIS)](https://data.sfgov.org/City-Infrastructure/Right-of-Way-Polygons/a2mg-gwmg)~~
 3.	Find Satellite Images that are granular, have multiple channels, and are newer than 2015
-    *Data Preparation* 
+
+*Data Preparation* 
 4.	Create a mask from the Right-of-Way (RoW) Polygons based on the shape of the satellite images
 5.	Cut the RoW masks & satellite images into the same sized windows
 6.	Process the satellite images into matrices 
-    *Develop & Fit the Model* 
+
+*Develop & Fit the Model* 
 7.	Start with a U-net architecture for the model. Then potentially look into alternatives
 8.	Fit the model
 9.	Analyze the accuracy then re-evaluate the model
