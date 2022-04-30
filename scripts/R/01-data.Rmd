@@ -1,196 +1,229 @@
 
-
-The first step is important & engineering appropriate dependent ('house prices') and independent variables. Largely, these variables describe:
-
-1. the house's internal & building characteristics;
-
-2. nearby public services & amenities; and,
-
-3. relevant spatial processes & external attributes.
-
-The variables imported & engineered in Section 1 aren't the full list of variables considered in this project. There was a fair amount of background data cleaning, extraction, and ignored variables before settling on this list of 27 variables. In Section 2, that list is narrowed down to 13 after testing independence and correlation. 
-
-## Internal Characteristics
-
-A majority of our variable come from the internal characteristics of the homes as they are the physical property being sold. 
-
-###  Sales & Attributes
-
-The primary data set our team will be using is a collection of Boulder County Single-Family Homes Sales from January 2019 to February 2021 (n = 11,364). 
-
-These points, sales, and building characteristics were curated into a single data set by the Urban Spatial data team and the University of Pennsylvania's Department of Urban Spatial Analytics. However, the data originated from the sales, parcels, and building records of [Boulder County's Tax Assessor Office](https://www.bouldercounty.org/property-and-land/assessor/data-download/). On the local level, the Assessor's Parcel & Building data is the primary, and sometimes *only*, method of recording the population, built environment, and housing transactions. We found it important to heavily utilize this data as it can be found in most local levels in the United States. 
-
-To emphasize, our team and model is utilizing the Assessor's (1) Building Characteristics and (2) Sales properties that were provided to us -- as well as the (3) lot sizes found in the Assessor's Parcels & Land tables. This is an important clarification as our team is developing an model *independent* of Boulder County's Assessed Property Valuation Model and its predicted values. We did **not** pull any other sales or predictions.
-
-```{r vars_sales_import}
+```{r vars_setup}
 
 DIR = "C:/Users/nelms/Documents/Penn/CPLN-680/Permit_Metrics"
+setwd(DIR)
 
 # sf feet proj
 project_crs = st_crs('EPSG:7132')
+
+```
+
+## Permits by Block Group
+
+```{r vars_}
 
 # data pre-cleaned in python
 data_path =
    paste(DIR, "/data/clean/sf_dataset_20220414.geojson", sep="")
 sf.data =
-  st_read(data_path)
+  st_read(data_path) %>%
+  st_transform(project_crs)
 
 ```
 
-### Lot Size
-
-In order to find the lot sizes of the housing sales, we pre-joined the Home Sales points to the Tax Assessor Parcels through a (1) spatial join and a (1) tabular join on the shared 'address' field. It is important to use lot size in the model as it is a large share of a home's valuation. 
+### Feature
 
 ```{r vars_sales_lots}
 
-### ### ### ### ### #
-## Original Location of Parcels
-###  https://opendata-bouldercounty.hub.arcgis.com/datasets/parcels/explore
 
-## parcel_path =
-##   "./data/Boulder_Parcels_20211009.geojson"
-## sf.p.all =
-##   st_read(parcel_path) %>%
-##   st_transform(project_crs)
-
-### ### ### ### ### ### 
-## Original Location of Tax Assessor's Tables 
-###  https://www.bouldercounty.org/property-and-land/assessor/data-download/
-###  I only used these tables: Account & Parcel Numbers, Owners & Address, Buildings, & Land
-###  I DID NOT use any tables with sales or valuation data
-
-# sf.p.join = 
-#   read.csv("data/Boulder_Sales_Assessor_join.csv")
-# 
-# sf.data = 
-#   merge(
-#     sf.data,
-#     sf.p.join,
-#     on='id.apn'
-#   ) %>% select(-X)
-
-# To save ~~some~~ *alot* of time and memory space, I pre-joined the Housing Sales and associated Tax Parcels to get the shared account id, ("id.acct"/"strap"), Parcels Numbers ("id.apn"/"parcelno"/"folio"), and lot sizes in square feet.
 ```
 
-### Engineering Features
-
-The internal variable engineering is primarily creating binary variables or re-configuring categorical/ordinal variables. In one instance, we engineered binary fields if the house had Air Conditioning Systems ("build.ac"), Heating Systems ("build.heatsys"), or both ("build.hvac"). 
+### Feature
 
 ``` {r vars_sales_engineer}
-# 
-# sf.data =f
-#   sf.data %>%
-#   mutate(
-#     build.main.sf = mainfloorSF,
-#     build.stories = 
-#       ifelse(
-#         designCodeDscr %in% c('Bi-level', 'MULTI STORY- TOWNHOUSE'),
-#         2,
-#         ifelse(
-#           designCodeDscr %in% c('Split-level'),
-#           3,
-#           ifelse(
-#             designCodeDscr %in% c('2-3 Story'),
-#             2.5,
-#             ifelse(
-#               designCodeDscr %in% c('1 Story - Ranch'),
-#               1,
-#               0
-#             )))),
-#     build.bsmt.finished = ifelse(
-#       grepl(' FINISHED', bsmtTypeDscr),
-#       1,
-#       0),
-#     build.garage.covered = ifelse(
-#       carStorageType %in% c("GRA", "GRB", "GRD", "GRW", "GRF"),
-#       1,
-#       0)
-#     )
-# 
-# ## analyzing if the 2-3 stories is larger
-# sf.up_down = 
-#   sf.data %>% 
-#   st_drop_geometry() %>%
-#   filter(designCodeDscr=='2-3 Story' & build.main.sf>0) %>%
-#   mutate(
-#     build.upstairs.sf = TotalFinishedSF - mainfloorSF,
-#     build.up_down.ratio = round(build.upstairs.sf/build.main.sf,2),
-#     build.up_down.diff.sf = build.upstairs.sf-build.main.sf,
-#     build.stories.fix = ifelse(
-#       (build.up_down.ratio>1)&(build.up_down.diff.sf>100),
-#       3,
-#       2
-#     ))
-# 
-# ## sf.up_down %>%
-# ##   group_by(build.stories.fix) %>%
-# ##   summarise(
-# ##     mean.up_down.ratio = mean(build.up_down.ratio),
-# ##     mean.diff.sf = mean(build.up_down.diff.sf),
-# ##     count = n()
-# ##     ) %>% arrange(count)
-# 
-# sf.data[
-#   (sf.data$designCodeDscr=='2-3 Story') & 
-#   (sf.data$build.main.sf>0), 'build.stories'] = 
-#   sf.up_down %>% pull(build.stories.fix)
-# 
-# sf.data = 
-#   sf.data %>%
-#   mutate(
-#     build.quality = qualityCode,
-#     build.year    = builtYear,
-#     build.year.adj = EffectiveYear,
-#     build.garage.sf = carStorageSF,
-#     build.bsmt.sf   = bsmtSF,
-#     build.house.sf  = TotalFinishedSF,
-#     build.garage.sf = carStorageSF,
-#     build.bedrooms  = nbrBedRoom,
-#     build.rooms  = nbrRoomsNobath,
-#     
-#     build.baths.adj = nbrFullBaths + nbrThreeQtrBaths + nbrHalfBaths*.5,
-#     build.baths   = nbrFullBaths + nbrThreeQtrBaths + nbrHalfBaths,
-#     build.living.sf  = build.house.sf + ifelse(
-#                         build.bsmt.finished==1, 
-#                         build.bsmt.sf, 0),
-#     build.ac      = ifelse(Ac %in% c(215,210), 1, 0),
-#     build.heatsys = ifelse(
-#       Heating %in% c(810,830,880,850, 820), 1, 0),
-#     build.hvac    = ifelse(
-#       (build.heatsys==1)&(build.ac==1),1,0)
-#     
-#   )
 
 ```
 
-In another instance, the original assessor field of the amount of 'stories' in the building are empty. As a result, we estimated the stories based on (1) the Assessor's Design Codes & (2) narrowing down those ranges of stories based on a ratio of 'upstairs square footage' over 'main floor square footage'. If upstairs square footage has a significantly larger area than the main floor, then it likely has more than 2 floors.
 
-## Public Services
+## Other Dataset
 
-Our model also wants to incorporate external factors, with public services being important. 
-
-###   Boundaries
-
-For administrating & visualizing variables, we import in Boulder County and city boundaries. The main field being use is 'whether or not the home is in an incorporated city'.
-
+### City Boundary
 ``` {r vars_boundaries}
+data_path =
+   paste(DIR, "/data/raw/georeference/sf_neighborhoods.geojson", sep="")
+sf.nhood =
+  st_read(data_path) %>%
+  st_transform(., crs=project_crs)
 
-# sf.county = 
-#   st_read('data/boulder_county.geojson') %>%
-#   st_sf(., crs=project_crs)
-# 
-# sf.cities = 
-#   st_read('data/boulder_cities.geojson') %>%
-#   st_sf(., crs=project_crs)
-# 
-# sf.cities.incorp = 
-#   sf.cities %>% filter(incorporated=='city') %>%
-#   mutate(in.city = 1)
-# 
-# sf.data = 
-#   sf.data %>%
-#   st_join(., sf.cities.incorp %>% select(in.city)) %>%
-#   mutate(in.city = replace_na(in.city, 0))
+data_path =
+   paste(DIR, "/data/clean/sf_dataset_20220414.geojson", sep="")
+sf.boundary = 
+  st_read(data_path) %>%
+  st_transform(., crs=project_crs) %>%
+  st_union()
+
+data_path = 
+  paste(DIR, "/data/raw/georeference/sf_quadrants.geojson", sep="")
+sf.quad = 
+  st_read(data_path) %>%
+  st_transform(., crs=project_crs) %>%
+  select(quad)
+
+geom_bound = function(
+  data = sf.boundary,
+  fill = 'transparent', color='black',
+  size=1, ...
+  ){
+    c_plot = geom_sf(data = data, fill = fill, color=color, size=size, ...)
+    return(c_plot)}
+
+geom_dash = function(
+  data = sf.boundary,
+  fill = 'transparent', color='grey',
+  lwd=.1, #linetype = "dashed",
+  ...
+  ){
+    c_plot = geom_sf(data = data, fill = fill, color=color,
+          lwd=lwd,linetype = linetype, ...)
+    return(c_plot)}
+
+plot_limits = function(
+  data = sf.boundary$geometry,
+  ## buffer between plot's limits and the geometry 
+  ## (in unit of geometry column)
+  buffer = 0
+){
+  ## creates bounding box
+  poly.bbox =
+    data %>% st_union() %>%
+    ## buffers the geometry so the ultimate plot has margins
+    st_buffer(buffer) %>%
+    st_bbox()
+  return(
+    ## returns the 'coord_sf' function which you can add to any plot
+    coord_sf(
+      xlim = c(poly.bbox['xmin'], poly.bbox['xmax']),
+      ylim = c(poly.bbox['ymin'], poly.bbox['ymax']),
+      crs = st_crs(data)
+  ))}
+
+sf.nhood$nhood = sf.nhood$nhood %>% 
+  gsub("Bayview Hunters", "Bayview/Hunters", ., fixed = TRUE) %>%
+  gsub("Financial District", "Downtown", ., fixed = TRUE) %>%
+  gsub("South of Market", "SOMA", ., fixed = TRUE) %>%
+  sapply(., function(s)
+    strsplit(s, '/', fixed = TRUE)[[1]][1]
+    ) %>%
+  as.character()
+
+sf.nhood = 
+  rbind(
+    sf.nhood %>% 
+      filter(grepl('Richmond', nhood, fixed = TRUE)) %>%
+      st_union() %>%
+      st_sf() %>%
+      mutate(nhood='Richmond'),
+    sf.nhood %>% 
+      filter(!grepl('Richmond', nhood, fixed = TRUE))
+  ) %>%
+  st_sf()
+
+merge_geom = function(focus_list, replace_word, focus_sf=sf.nhood){
+  rbind(
+    focus_sf %>%
+      filter(nhood %in% focus_list) %>%
+      st_union() %>%
+      st_sf() %>%
+      mutate(nhood=replace_word),
+    focus_sf %>%
+      filter(!(nhood %in% focus_list))
+  ) %>%
+  st_sf()}
+westfix = 
+replace_word = 
+
+sf.nhood = merge_geom(
+  c('Pacific Heights', 'Japantown', 'Western Addition'),
+  'Western\nAddition'
+  )
+
+sf.nhood = merge_geom(
+  c('Haight Ashbury', 'Castro'),
+  'Haight-Ashbury Castro'
+  )
+# sf.nhood = merge_geom(
+#   c('Noe Valley', 'Glen Park'),
+#   'Noe Valley \\\nGlen Park'
+#   )
+
+
+remove_nhood = c(
+  'Lincoln Park', 'Treasure Island', 'Russian Hill', 'Japantown',
+  'Lakeshore', 'Excelsior', 'West of Twin Peaks', 'Visitacion Valley',
+  'Golden Gate Park', 'Lone Mountain', 'Inner Sunset', 'Seacliff', 
+  'Nob Hill', 'Pacific Heights', 'Presidio Heights', 'Mission Bay',
+  'Twin Peaks', 'Chinatown', 'McLaren Park', 'Outer Mission', 'Oceanview',
+  'Presidio', 'Marina', 'Portrero Hill', 'Bernal Heights', 'Noe Valley \\\nGlen Park',
+  'Noe Valley', 'Glen Park', 'Haight Ashbury', 'Castro'
+  )
+
+sf.nhood = sf.nhood %>%
+  filter(!(nhood %in% remove_nhood))
+
+sf.nhood$rank = 3
+
+rank1 = c('Downtown', 'Mission')
+sf.nhood[sf.nhood$nhood %in% rank1, 'rank'] = 1
+rank2 = c(
+  'Bayview', 'SOMA', 'Tenderloin', 'Hayes Valley',
+  'Sunset', 'Richmond'
+  )
+sf.nhood[sf.nhood$nhood %in% rank2, 'rank'] = 2
+
+sf.nhood$nhood = sf.nhood$nhood %>%
+  gsub(" ", "\n", ., fixed = TRUE)
+
+geom_nhood = function(
+  data = sf.nhood,
+  ranks = c(1,2,3),
+  focus = c(),
+  size=3
+  ){
+  geom_text_sf(
+    sf_to_labels(
+      data %>%
+        filter((rank %in% c(ranks))|(nhood %in% focus)),'nhood'),
+    size = size)
+}
+
+geom_quad = function(
+  data = sf.quad,
+  size=5, ...
+  ){
+  geom_text_sf(
+    sf_to_labels(
+      data, 'quad'),
+    size = size, ...)
+}
+
+plot_limits = function(
+  data = sf.quad,
+  # buffer between plot's limits and the geometry 
+  # (in unit of geometry column)
+  buffer = 0
+){
+  # creates bounding box
+  poly.bbox =
+    data %>% st_union() %>%
+    # buffers the geometry so the ultimate plot has margins
+    st_buffer(buffer) %>%
+    st_bbox()
+  return(
+    # returns the 'coord_sf' function which you can add to any plot
+    coord_sf(
+      xlim = c(poly.bbox['xmin'], poly.bbox['xmax']),
+      ylim = c(poly.bbox['ymin'], poly.bbox['ymax']),
+      crs = st_crs(data)
+  ))}
+
+
+ggplot() +
+  #geom_sf(data=sf.nhood, aes(fill=rank)) + 
+  #geom_bound() +
+  geom_quad() + 
+  geom_nhood(ranks=c(1,2, 3)) +
+  plotTheme()
 
 ```
 
@@ -441,7 +474,8 @@ Looking at the filters, we are only removing around 174 housing sales observatio
 
 ### Predicting Dataset
 
-WE split up the data between sales prices known, and the sales prices that are set to be predicted. We will look at the predicted prices for all variables at the end of Section 3.
+I also remove non-residential (or very low) block groups from the predicting dataset. My eventual predictions will be skewed if I leave in areas that cannot receive building permits.
+
 
 ``` {r vars_partition}
 
@@ -462,14 +496,15 @@ non_res_geoid10 = c(
     '06075980501' # McLaren
 )
 
-sf.predict.0 = 
+sf.predict = 
   sf.data %>%
     filter(!geoid10 %in% non_res_geoid10) %>%
     mutate_all(~replace(., is.na(.), 0))
-sf.predict.1 = 
+sf.predict = 
   sf.data %>%
     filter(!geoid10 %in% non_res_geoid10) %>%
-    mutate_all(~replace(., is.na(.), 0))
+    mutate_all(~replace(., is.na(.), 0)) %>% 
+   filter(permits.tot.15_19<140)
 
 ```
 

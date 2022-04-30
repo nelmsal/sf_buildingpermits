@@ -32,6 +32,7 @@ library(broom)
 library(rgdal)
 library(spdep)
 library(grid)
+library(viridis)
 
 ```
 
@@ -189,35 +190,17 @@ get_labels = function(
 # plot text 
 geom_text_sf = function(
   sf.focus.labels,
-  fontface='bold', color='black', label.size = 0.25,
-  size = 3, check_overlap = TRUE
+  fontface='bold', color='black', check_overlap = TRUE,
+  ...
 ){
   labels = 
     geom_text(
-        data=sf.focus.labels, check_overlap=TRUE,
+        data=sf.focus.labels, check_overlap=check_overlap,
         fontface=fontface, color=color,
-        aes(x=lon,y=lat, label=label))
+        aes(x=lon,y=lat, label=label), ...)
   return(labels)}
 
-plot_limits = function(
-  data = '',
-  # buffer between plot's limits and the geometry 
-  # (in unit of geometry column)
-  buffer = 0
-){
-  # creates bounding box
-  poly.bbox =
-    data %>% st_union() %>%
-    # buffers the geometry so the ultimate plot has margins
-    st_buffer(buffer) %>%
-    st_bbox()
-  return(
-    # returns the 'coord_sf' function which you can add to any plot
-    coord_sf(
-      xlim = c(poly.bbox['xmin'], poly.bbox['xmax']),
-      ylim = c(poly.bbox['ymin'], poly.bbox['ymax']),
-      crs = st_crs(data)
-  ))}
+
 
 ```
 
@@ -237,6 +220,44 @@ round_thresh = function(
   digits = 3,
   int_check = FALSE,
   commas = FALSE
+  ){
+  
+  if(is.null(field)){return('NULL')}
+  if(is.na(field)){return('NA')}
+  
+  thresh_str = 
+    paste('<', round_str(thresh, digits=digits), sep=' ')
+  
+  field_num = field %>% as.numeric()
+  
+  field_str = 
+    ifelse(
+      abs(field_num) < thresh,
+      thresh_str,
+      ifelse(
+        (int_check == TRUE & abs(field_num) >= 1),
+        field_num %>% round_str(digits=0),
+        field_num %>% round_str(digits=digits)
+        ))
+  
+  return(field_str)
+}
+
+round_str = function(str_num, digits=3) str_num %>% 
+        as.numeric() %>%
+        round(digits) %>% 
+        as.character() %>% 
+        str_replace(., "^0\\.", ".") %>%
+        str_remove(., "0+$")
+
+count_format = 
+  function(col) format(col, digits=0, big.mark = ",")
+
+round_thresh = function(
+  field,
+  thresh = .001,
+  digits = 3,
+  int_check = FALSE
   ){
   
   if(is.null(field)){return('NULL')}

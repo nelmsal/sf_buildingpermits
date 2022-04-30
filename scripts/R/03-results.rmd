@@ -13,7 +13,7 @@ This section:
 
 ### 	Partition Training & Test Sets
 
-Before developing the model, this study splits the dataset of known home prices [sf.predict.0] before training a linear model so we can test that model on unbiased data. Specifically, 75% of the known home prices are randomly split into the training dataset [sf.train] -- while 25% goes into an unbiased test set [sf.test].
+Before developing the model, this study splits the dataset of known home prices [sf.predict] before training a linear model so we can test that model on unbiased data. Specifically, 75% of the known home prices are randomly split into the training dataset [sf.train] -- while 25% goes into an unbiased test set [sf.test].
 
 
 ```{r setup_train_test_partition}
@@ -30,15 +30,15 @@ select_iv = function(sf, variable_names=var.ivs){
              select(variable_names))}
 
 inTrain = createDataPartition(
-              y = sf.predict.0 %>% pull(units.tot.15_19), 
+              y = sf.predict %>% pull(units.tot.15_19), 
               p = .75, list = FALSE)
 
 sf.train = 
-  sf.predict.0[inTrain,] %>% 
+  sf.predict[inTrain,] %>% 
   select(c(vars.admin, var.dv, var.ivs))
 
 sf.test = 
-  sf.predict.0[-inTrain,] %>% 
+  sf.predict[-inTrain,] %>% 
   select(c(vars.admin, var.dv, var.ivs))
 
 ```
@@ -353,8 +353,8 @@ In the table below, we see that for Fold 100, we have an r-Squared value of 48% 
 
 tab_num = 6
 
-sf.predict.0.cv =
-  sf.predict.0 %>%
+sf.predict.cv =
+  sf.predict %>%
   select_v() %>%
   mutate(
     regression     = "Final CV Regression",
@@ -407,10 +407,10 @@ train.cv.100_final =
     data.frame(
       Model = c('Final CV'),
       Dataset = c("Observed House Sales"), 
-      MAE.mean = sf.predict.0.cv$units1519.abserror %>% mean() %>% 
+      MAE.mean = sf.predict.cv$units1519.abserror %>% mean() %>% 
         format_nums(),#,
       MAE.sd   = '',
-      RMSE.mean = sf.predict.0.cv$units1519.rmse[1] %>%
+      RMSE.mean = sf.predict.cv$units1519.rmse[1] %>%
         format_nums(),#,
       RMSE.sd   = '',
       R2.mean =  glance(train.cv.final)$r.squared %>% 
@@ -462,8 +462,8 @@ Now we run the model onto the full dataset of known and unknown home values.
 
 sf.predict = 
   rbind(
-    sf.predict.0[, colnames(sf.predict.1)],
-    sf.predict.1
+    sf.predict[, colnames(sf.predict)],
+    sf.predict
   ) %>%
   mutate(
     regression      = "Final Regression",
@@ -477,7 +477,7 @@ sf.predict =
     units1519.rmse  = sqrt(mean((units1519.error)^2, na.rm=TRUE))
   )
 
-# sf.predict.1 %>%
+# sf.predict %>%
 #   st_drop_geometry() %>%
 #   mutate(units1519.predict = predict(train.cv, .)) %>%
 #   select(id.musa, units1519.predict) %>% 

@@ -1,0 +1,112 @@
+---
+title: "San Franciso Permit Metrics"
+author: "Alexander Nelms"
+date: "4/29/2022"
+output:
+  bookdown::html_document2:
+    code_folding: hide
+    fig_caption: yes
+    toc_depth: 2
+    toc: yes
+    toc_float: 
+      collapsed: false
+    number_sections: true
+editor_options: 
+  markdown: 
+    wrap: sentence
+  chunk_output_type: inline
+---
+
+
+```{r setup00, include=FALSE}
+library(bookdown)
+knitr::opts_chunk$set(
+  echo=TRUE,
+  include=TRUE,
+  warning=FALSE,
+  messages=FALSE,
+  fig.width = 8,
+  fig.keep = 'all',
+  collapse=TRUE,
+  cache=TRUE, 
+  autodep=TRUE,
+  results=FALSE,
+  root.dir = getwd()
+  )
+options(tigris_class = "sf")
+options(scipen = 999)
+# rmarkdown::render('index.Rmd', output_file='MUSA508_HW2_NELMS-Mangiapane.html')
+# bookdown::render_book('index.Rmd', 'bookdown::gitbook')
+
+#{.tabset}
+```
+
+This project aims to better understand (1) where new units are being permitted in the City of San Francisco, and (2) determine if those new permits or units relate to demographic changes.  
+
+This project's model aims to (A) *accurately* predict the prices of homes while (B) remaining *general* enough to predict the home values outside of the Boulder County training dataset & context. 
+
+The process of forming this predictive model starts with:
+
+1. **Wrangling Data** that can describe both the interior & exterior factors of the houses while being obtainable for other geographies; then
+
+2. **Exploring that Data** to select the most predictive & independent variables; before,
+
+3. **Estimating a Linear Model** off of a test dataset & validating the model with a larger dataset; and finally,
+
+4. **Spatially** estimating the linear model & incorporating a geographic analysis. 
+
+```{r child = '00-intro.Rmd'}
+```
+
+Our linear model only used 13 selected variables that addressed the basic interior and exterior values of a home. Our predicted prices, as a result, averaged a difference of \$ 231,276 with the observed Boulder County 2019-21 prices (Mean Absolute Error). Those errors were, on average, 33.8 % (Mean Absolute Percentage Error). Considering the average observation cost \$ 749,112, our predictions ultimately aren't accurate enough to display on Zillow. 
+
+-------------------------------
+
+# Data Wrangling
+
+```{r child = '01-data.Rmd'}
+```
+
+-------------------------------
+
+# Exploratory Data Analysis
+
+```{r child = '02-EDA.Rmd'}
+```
+
+-------------------------------
+
+# Linear Model Results
+
+```{r child = '03-results.Rmd'}
+```
+
+----------------------------------
+
+# Spatial Model Results
+
+```{r child = '04-spatial.Rmd'}
+```
+----------------------------------
+
+# Conclusion
+
+## Overall
+Our project and model was able to predict a blurry picture of the Boulder County House Prices. Our model's errors were large (based on a 38% MAPE) and indicated there were unique spatial & price patterns of the errors. The spatial section highlighted that we under-estimated higher-value homes in the suburbs while over-estimating lower-value houses.
+
+## Variables
+Initially, we assumed that relying on internal characteristics of the house would proide the majority of predicting accuracy. And it did so to an extent. By slightly engineering many of the internal variables (e.g, bathrooms adjusted, finished basement, HVAC, living area, lot size) did a quality job of providing the base prediction of price. 
+
+The spatial section, however, highlighted that our external variables didn't account for the larger spatial trends effecting price. The external amenities and spatial variables we used (elementary school ranks, census demographics, in city) were either not significant enough to keep in the model or to remove the spatial errors (highlighted by lag & Moran's I). 
+
+Our model's largest room for improvement is bringing in more external variables that could potentially explain higher priced homes in the suburbs. It would be beneficial to try and bring in more spatial comparisons of price based on neighborhoods.
+
+## Generalizability
+The difference between above-AMI & below-AMI errors highlights that our model is not generalizing predicts between two different areas. The scatter plots of errors (Figure 5) & spatial lag maps (Map 5) suggest that there are unaccounted spatial patterns in lower and higher cost homes.  
+
+## Conclusion
+
+Overall, I would not recommend Zillow to use our housing model. It was not accurate enough to predict Boulder County homes with certainty but not generalized enough to predict based on multiple regions. 
+
+
+----------------------------------

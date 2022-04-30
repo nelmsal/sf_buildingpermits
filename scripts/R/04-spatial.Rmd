@@ -1,14 +1,14 @@
 
-Section 3 was able to create a method of predicting housing prices for homes in Boulder County. Even though the independent variables used to predict housing prices included spatial features, the results were not spatially visualized or analyzed.
+Section 3 was able to create a method of predicting housing units.tot.15_19s for homes in Boulder County. Even though the independent variables used to predict housing units.tot.15_19s included spatial features, the results were not spatially visualized or analyzed.
 
 > There are three things that matter in property:
 > **location, location, location**
 > 
 >  --- *Lord Harold Samuel*
 
-In this section, the study will examine if the housing price predictions are spatially correlated. The process follows
+In this section, the study will examine if the housing units.tot.15_19 predictions are spatially correlated. The process follows
 
-1. lagging predicted Price & Errors by their neighbors, 
+1. lagging predicted units.tot.15_19 & Errors by their neighbors, 
 
 2. evaluating our predictions by the home's neighborhoods, and
 
@@ -16,14 +16,15 @@ In this section, the study will examine if the housing price predictions are spa
 
 ##  Spatial Lag
 
-The first part of our spatial analysis is understanding how prices are related to their neighbors. 
+The first part of our spatial analysis is understanding how units.tot.15_19s are related to their neighbors. 
 
 Since our test data is point-based and dispersed, we use the 5 closest neighbors to create a weight matrix of the dataset. If we had polygon data, we could relate neighbors by touching. If our point data was more evenly dispersed, we could find neighbors based on a set distance.
 
 ```{r setup_all_SpatialLag}
 
-boulder.test.weights = 
-  boulder.test %>%
+sf.test.weights = 
+  sf.test %>%
+  st_centroid() %>%
   # all coordinates
   st_coordinates(.) %>%
   # 5-nearest neighbor list
@@ -32,22 +33,22 @@ boulder.test.weights =
   # spatial weights
   nb2listw(., style="W")
 
-boulder.test = 
-  boulder.test %>%
+sf.test = 
+  sf.test %>%
   mutate(
-    price.lag = 
-      lag.listw(boulder.test.weights, price.predict),
-    price.error.lag = 
-      lag.listw(boulder.test.weights, price.error)
+    units1519.lag = 
+      lag.listw(sf.test.weights, units1519.predict),
+    units1519.error.lag = 
+      lag.listw(sf.test.weights, units1519.error)
   )
 
 ```
 
 ###  Scatterplot of Spatial Lag and Errors
 
-The scatter plots show that the spatial lag in price and error are smaller than the predicter values. This is essentially due to the error and price being evened out amoung the 5 nearest neighbors. 
+The scatter plots show that the spatial lag in units.tot.15_19 and error are smaller than the predicter values. This is essentially due to the error and units.tot.15_19 being evened out amoung the 5 nearest neighbors. 
 
-In many cases the 5-NN will provide a better idea of the average price of an area. At the same time, the large geographic spread of houses in the test dataset may dilute the individuality of houses whose closest 5 neighbors are significantly distant. 
+In many cases the 5-NN will provide a better idea of the average units.tot.15_19 of an area. At the same time, the large geographic spread of houses in the test dataset may dilute the individuality of houses whose closest 5 neighbors are significantly distant. 
 
 ```{r plot_test_SpatialLag}
 
@@ -55,40 +56,40 @@ fig_num = 8
 
 title = glue('Figure {fig_num}: Home Value Predictions with Spatial Lag')
 grid.arrange(ncol=2,
-  ggplot(boulder.test, aes(price.lag, price.predict)) +
+  ggplot(sf.test, aes(units1519.lag, units1519.predict)) +
     geom_point() +
-    stat_smooth(aes(price.lag, price.predict), 
+    stat_smooth(aes(units1519.lag, units1519.predict), 
                method = "lm", se = FALSE, size = 1, colour="#FA7800")+
-    scale_x_continuous(labels=money_format) + 
-    scale_y_continuous(labels=money_format) + 
-    labs(subtitle = "Predicted Price & Price Lag") +
+    #scale_x_continuous(labels=money_format) + 
+    #scale_y_continuous(labels=money_format) + 
+    labs(subtitle = "Predicted units.tot.15_19 & units.tot.15_19 Lag") +
     plotTheme(),
 
-  ggplot(boulder.test, aes(price.error.lag, price.error)) +
+  ggplot(sf.test, aes(units1519.error.lag, units1519.error)) +
     geom_point() +
-    stat_smooth(aes(price.error.lag, price.error), 
+    stat_smooth(aes(units1519.error.lag, units1519.error), 
                method = "lm", se = FALSE, size = 1, colour="#FA7800")+
-    scale_x_continuous(labels=money_format) + 
-    scale_y_continuous(labels=money_format) + 
-    labs(subtitle = "Predicted Price & Error Lag") +
+    #scale_x_continuous(labels=money_format) + 
+    #scale_y_continuous(labels=money_format) + 
+    labs(subtitle = "Predicted units.tot.15_19 & Error Lag") +
     plotTheme(),
  
-  # ggplot(boulder.test, aes(price.lag, price)) +
+  # ggplot(sf.test, aes(units1519.lag, units.tot.15_19)) +
   #   geom_point() +
-  #   stat_smooth(aes(price.lag, price), 
+  #   stat_smooth(aes(units1519.lag, units.tot.15_19), 
   #              method = "lm", se = FALSE, size = 1, colour="green")+
   #   scale_x_continuous(labels=money_format) + 
   #   scale_y_continuous(labels=money_format) + 
-  #   labs(subtitle = "Observed Price & Price Lag") +
+  #   labs(subtitle = "Observed units.tot.15_19 & units.tot.15_19 Lag") +
   #   plotTheme(),
   # 
-  # ggplot(boulder.test, aes(price.error.lag, price)) +
+  # ggplot(sf.test, aes(units1519.error.lag, units.tot.15_19)) +
   #   geom_point() +
-  #   stat_smooth(aes(price.error.lag, price), 
+  #   stat_smooth(aes(units1519.error.lag, units.tot.15_19), 
   #              method = "lm", se = FALSE, size = 1, colour="green")+
   #   scale_x_continuous(labels=money_format) + 
   #   scale_y_continuous(labels=money_format) + 
-  #   labs(subtitle = "Predicted Price & Error Lag") +
+  #   labs(subtitle = "Predicted units.tot.15_19 & Error Lag") +
   #   plotTheme(),
   
   top = grid::textGrob(title,gp=grid::gpar(fontsize=15))
@@ -108,22 +109,20 @@ The histogram's grey distribution (Figure 9) displays the 999 Moran's I of Error
 
 fig_num = 9
 
-boulder.test.MoransI = 
+sf.test.MoransI = 
   moran.mc(
-    boulder.test$price.error,
-    boulder.test.weights, 
+    sf.test$units1519.error,
+    sf.test.weights, 
     nsim = 999
     )
 
-boulder.test.MoransI %>% str()
-
 ggplot(
-    boulder.test.MoransI$res[c(1:999)] %>% as.data.frame(), 
-    aes(boulder.test.MoransI$res[c(1:999)])
+    sf.test.MoransI$res[c(1:999)] %>% as.data.frame(), 
+    aes(sf.test.MoransI$res[c(1:999)])
   ) +
   geom_histogram(binwidth = 0.01) +
   geom_vline(
-    aes(xintercept = boulder.test.MoransI$statistic), 
+    aes(xintercept = sf.test.MoransI$statistic), 
     colour = "#FA7800",size=1) +
   #scale_x_continuous(limits = c(-1, 1)) +
   labs(
@@ -137,9 +136,9 @@ ggplot(
 
 ###  Maps of Test Set Errors
 
-The Maps below give us better insight on the spatially laged prices and errors. 
+The Maps below give us better insight on the spatially laged units.tot.15_19s and errors. 
 
-Overally for price (Maps A & B), you can see the higher priced homes in the suburbs of NW Boulder, NW Lafayette-Louisville, and SW Longmont. The lagged areas, although faint, have less variability in prices. Looking at the rural houses in Western Boulder County, the spatially lagged prices lean more towards the middle bracket of $.5-1 million -- as high-valued ranch houses have the nearest neighbors of run-down homes.
+Overally for units.tot.15_19 (Maps A & B), you can see the higher units.tot.15_19d homes in the suburbs of NW Boulder, NW Lafayette-Louisville, and SW Longmont. The lagged areas, although faint, have less variability in units.tot.15_19s. Looking at the rural houses in Western Boulder County, the spatially lagged units.tot.15_19s lean more towards the middle bracket of $.5-1 million -- as high-valued ranch houses have the nearest neighbors of run-down homes.
 
 The error maps (C & D) help explain the over- & under- estimated homes -- discussed in Section 3's Test Scatterplot (Figure 5). The city of boulder has a significant under-estimation city wide. The 'in city' variable could be a major factor as it weighs down the entire city's values. 
 
@@ -147,90 +146,90 @@ The error maps (C & D) help explain the over- & under- estimated homes -- discus
 
 map_num = 5
 
-title = glue('Map {map_num}: Predictions & Spatially Lagged Prices & Errors\nsummed by fishnet')
+title = glue('Map {map_num}: Predictions & Spatially Lagged units.tot.15_19s & Errors\nsummed by fishnet')
 
-boulder.test = 
-  boulder.test %>%
+sf.test = 
+  sf.test %>%
   st_join(
     .,
-    boulder.fishnet,
+    sf.fishnet,
     suffix = c("", ".dupe_join")
   ) %>%
   select(-ends_with(".dupe_join"))
 
-boulder.test.fishnet = 
+sf.test.fishnet = 
   merge(
-    boulder.fishnet,
-    boulder.test %>%
+    sf.fishnet,
+    sf.test %>%
       mutate(count.homes = 1) %>%
       st_drop_geometry() %>%
       group_by(id.fishnet) %>%
       summarize(
         count.homes = sum(count.homes, na.rm=TRUE),
-        MAE = mean(price.abserror, na.rm=TRUE),
-        ME  = mean(price.error, na.rm=TRUE),
-        MPE = mean(price.abserror / price, na.rm=TRUE),
-        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+        MAE = mean(units1519.abserror, na.rm=TRUE),
+        ME  = mean(units1519.error, na.rm=TRUE),
+        MPE = mean(units1519.abserror / units.tot.15_19, na.rm=TRUE),
+        avg.units1519.predict = mean(units1519.predict, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price  = mean(price, na.rm=TRUE) %>%
+        avg.units1519  = mean(units.tot.15_19, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price.lag       = mean(price.lag, na.rm=TRUE) %>%
+        avg.units1519.lag       = mean(units1519.lag, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price.error.lag = mean(price.error.lag, na.rm=TRUE) %>%
+        avg.units1519.error.lag = mean(units1519.error.lag, na.rm=TRUE) %>%
           as.numeric()
       ),
     on='id.fishnet'
   )%>%
   mutate(
     count.homes = replace_na(count.homes, 0),
-    avg.price.lag = replace_na(avg.price.lag, 0),
-    avg.price.error.lag = replace_na(avg.price.error.lag, 0)
+    avg.units1519.lag = replace_na(avg.units1519.lag, 0),
+    avg.units1519.error.lag = replace_na(avg.units1519.error.lag, 0)
     )
 
 Var1_map = var_cut_map(
-  focus_sf = boulder.test.fishnet,
-  var_field = 'avg.price.predict',
+  focus_sf = sf.test.fishnet,
+  var_field = 'avg.units1519.predict',
   focus_pal = "Greens 3",
   pal_rev = TRUE,
   var_breaks_nomax = c(0, 50000,250000,500000,1000000),
-  var_title = 'Predicted Prices',
-  var_legend = 'Mean Predicted\nPrice',
+  var_title = 'Predicted units.tot.15_19s',
+  var_legend = 'Mean Predicted\nunits.tot.15_19',
   var_num = 'A'
 )
 
 Var2_map = var_cut_map(
-  focus_sf = boulder.test.fishnet,
-  var_field = 'avg.price.lag',
+  focus_sf = sf.test.fishnet,
+  var_field = 'avg.units1519.lag',
   focus_pal = "Teal",
   pal_rev = TRUE,
   var_breaks_nomax = c(0, 250000, 500000,1000000),
-  var_title = 'Lagged Predicted Prices',
-  var_legend = 'Mean Price\nw/ Spatial Weights Lag',
+  var_title = 'Lagged Predicted units.tot.15_19s',
+  var_legend = 'Mean units.tot.15_19\nw/ Spatial Weights Lag',
   var_num = 'B'
 )
 
-min_me = min(boulder.test.fishnet[['ME']])
+min_me = min(sf.test.fishnet[['ME']])
 Var3_map = var_cut_map(
-  focus_sf = boulder.test.fishnet,
+  focus_sf = sf.test.fishnet,
   var_field = 'ME',
   focus_pal = "Green-Orange",
   pal_rev = TRUE,
   var_breaks_nomax = 
-    c(min_me, -500000, -249999, -4999, 5000, 250000, 500000),
+    c(min_me, -1000, -100, -50, 50, 100, 1000),
   var_title = "Errors",
-  var_legend = 'Mean of Price\n - Prediction',
+  var_legend = 'Mean of units.tot.15_19\n - Prediction',
   var_num = 'C',
   thousand = TRUE
 )
 
-min_me = min(boulder.test.fishnet[['avg.price.error.lag']])
+min_me = min(sf.test.fishnet[['avg.units1519.error.lag']])
 Var4_map = var_cut_map(
-  focus_sf = boulder.test.fishnet,
-  var_field = 'avg.price.error.lag',
+  focus_sf = sf.test.fishnet,
+  var_field = 'avg.units1519.error.lag',
   focus_pal = "Tropic",
   pal_rev = TRUE,
   var_breaks_nomax = 
-    c(min_me, -500000, -249999, -4999, 5000, 250000, 500000),
+    c(min_me, -1000, -100, -50, 50, 100, 1000),
   var_title = "Lagged Errors",
   var_legend = 'Mean of Errors\nw/ Spatial Lag',
   var_num = 'D',
@@ -265,84 +264,84 @@ tab_num = 7
 #neighborhood regression
 lm.test.nhood = 
   lm(
-    price ~ ., 
-    data = boulder.test %>% 
-      select(c('nhood_id', 'price', var.ivs)) %>%
+    units.tot.15_19 ~ ., 
+    data = sf.test %>% 
+      select(c('nhood_id', 'units.tot.15_19', var.ivs)) %>%
       st_drop_geometry()
     )
 
-boulder.test.nhood =
-  boulder.test %>%
+sf.test.nhood =
+  sf.test %>%
   mutate(
     regression      = "Neighborhood Effects",
-    price.predict   = 
+    units1519.predict   = 
       predict(
         lm.test.nhood, 
         .), 
     # residuals
-    price.error     = price - price.predict,
-    price.rmse      = sqrt(mean((price.error)^2)),
-    price.abserror  = abs(price.predict - price), 
-    price.ape       = price.abserror / price,
+    units1519.error     = units.tot.15_19 - units1519.predict,
+    units1519.rmse      = sqrt(mean((units1519.error)^2)),
+    units1519.abserror  = abs(units1519.predict - units.tot.15_19), 
+    units1519.ape       = units1519.abserror / units.tot.15_19,
     
-    price.error.lag = lag.listw(boulder.test.weights, price.error)
+    units1519.error.lag = lag.listw(sf.test.weights, units1519.error)
     )
 
-boulder.test.linear_nhood =
+sf.test.linear_nhood =
   rbind(
-    boulder.test,
-    boulder.test.nhood
+    sf.test,
+    sf.test.nhood
   )
 ```
 
 ###  Table of Errors
 
-The Table highlights the drastic change between the Testing Model & Neighborhood Model. The neighborhood variable drastically reduce the error -- probably as the model can now better link prices and other variables based on their neighbors.
+The Table highlights the drastic change between the Testing Model & Neighborhood Model. The neighborhood variable drastically reduce the error -- probably as the model can now better link units.tot.15_19s and other variables based on their neighbors.
 
 
 ``` {r table_nhood, results = "asis"}
 
 tab_num = 8
 
-boulder.test.linear_nhood %>%
-  select(regression, price.abserror, price.ape) %>%
+sf.test.linear_nhood %>%
+  select(regression, units1519.abserror, units1519.ape) %>%
   st_drop_geometry(.) %>%
   gather(Variable, Value, -regression) %>%
-  filter(Variable == "price.abserror" | Variable == "price.ape") %>%
+  filter(Variable == "units1519.abserror" | Variable == "units1519.ape") %>%
   group_by(regression, Variable) %>%
     summarize(meanValue = mean(Value, na.rm = T)) %>%
     spread(Variable, meanValue) %>%
   mutate(
-    price.abserror = price.abserror %>% money_format(),
-    price.ape = price.ape %>% percent_formatter()
+    units1519.abserror = units1519.abserror %>% money_format(),
+    units1519.ape = units1519.ape %>% percent_formatter()
   ) %>%
     kable(label = NA, caption = glue("Table {tab_num}: Neighbors Effect on Error")) %>%
     kable_styling()
 
 ```
 
-### Plot of Price
+### Plot of units.tot.15_19
 
-The plots highlight the difference in Observed & Predicted Price between the test & neighborhood regressions. The neighborhood regression appears to have less variance around the perfect prediction line (orange). The testing regression appear to be missing the higher valued homes that the neighborhood predictions and observed prices have.
+The plots highlight the difference in Observed & Predicted units.tot.15_19 between the test & neighborhood regressions. The neighborhood regression appears to have less variance around the perfect prediction line (orange). The testing regression appear to be missing the higher valued homes that the neighborhood predictions and observed units.tot.15_19s have.
 
 ```{r plot_nhood_var}
 
 fig_num = 10
 
-ggplot(boulder.test.linear_nhood, aes(price, price.predict)) +
+ggplot(sf.test.linear_nhood, aes(units.tot.15_19, units1519.predict)) +
   geom_point() +
-  stat_smooth(aes(price, price),
+  stat_smooth(aes(units.tot.15_19, units.tot.15_19),
              method = "lm", se = FALSE, size = 1.25, colour="#FA7800") +
-  stat_smooth(aes(price.predict, price),
+  stat_smooth(aes(units1519.predict, units.tot.15_19),
               method = "lm", se = FALSE, size = 1.25, colour="#25CB10") +
   facet_wrap(~regression) +
   scale_x_continuous(labels=money_format) + 
   scale_y_continuous(labels=money_format, limits = c(0,4*m)) + 
-  # xlim(min(boulder.test.linear_nhood$price,0), 
-  #      max(boulder.test.linear_nhood$price)) + 
-  # ylim(min(boulder.test.linear_nhood$price.predict,0), 
-  #      max(boulder.test.linear_nhood$price.predict)) + 
-  labs(title=glue("Figure {fig_num}: Predicted Sale Price and Observed Price"),
+  # xlim(min(sf.test.linear_nhood$units.tot.15_19,0), 
+  #      max(sf.test.linear_nhood$units.tot.15_19)) + 
+  # ylim(min(sf.test.linear_nhood$units1519.predict,0), 
+  #      max(sf.test.linear_nhood$units1519.predict)) + 
+  labs(title=glue("Figure {fig_num}: Predicted Sale units.tot.15_19 and Observed units.tot.15_19"),
        subtitle="Orange line represents a perfect prediction; Green line represents model's prediction") +
   plotTheme() + theme(plot.title = element_text(size = 18, colour = "black"))
 
@@ -361,31 +360,31 @@ The MAPE maps opposite highlights that the overall errors as a whole degress. Th
 
 map_num = 6
 
-boulder.test.linear_nhood$regression %>% unique()
+sf.test.linear_nhood$regression %>% unique()
 
-boulder.test.nhood.linear = 
+sf.test.nhood.linear = 
   merge(
     boulder.nhoods,
-    boulder.test.linear_nhood %>%
+    sf.test.linear_nhood %>%
       filter(regression == 'Boulder Test Regression') %>% 
       mutate(count.homes = 1) %>%
       st_drop_geometry() %>%
       group_by(nhood_id) %>%
       summarize(
         count.homes = sum(count.homes, na.rm=TRUE),
-        MAE = mean(price.abserror, na.rm=TRUE),
-        ME  = mean(price.error, na.rm=TRUE),
-        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
+        MAE = mean(units1519.abserror, na.rm=TRUE),
+        ME  = mean(units1519.error, na.rm=TRUE),
+        MAPE = mean(units1519.abserror / units.tot.15_19, na.rm=TRUE) * 100,
         MAPE = ifelse(MAPE>100, 100, MAPE),
-        MPE = mean(price.error / price, na.rm=TRUE) * 100,
+        MPE = mean(units1519.error / units.tot.15_19, na.rm=TRUE) * 100,
         MPE = ifelse(MPE<=-100, -100, MPE),
-        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+        avg.units1519.predict = mean(units1519.predict, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price  = mean(price, na.rm=TRUE) %>%
+        avg.units1519  = mean(units.tot.15_19, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price.lag       = mean(price.lag, na.rm=TRUE) %>%
+        avg.units1519.lag       = mean(units1519.lag, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price.error.lag = mean(price.error.lag, na.rm=TRUE) %>%
+        avg.units1519.error.lag = mean(units1519.error.lag, na.rm=TRUE) %>%
           as.numeric()
       ),
     on='nhood_id',
@@ -393,39 +392,39 @@ boulder.test.nhood.linear =
   ) %>%
   mutate(
     count.homes = replace_na(count.homes, 0),
-    avg.price.lag = replace_na(avg.price.lag, 0),
-    avg.price.error.lag = replace_na(avg.price.error.lag, 0),
-    avg.price.predict = replace_na(avg.price.predict, 0),
-    avg.price = replace_na(avg.price, 0),
+    avg.units1519.lag = replace_na(avg.units1519.lag, 0),
+    avg.units1519.error.lag = replace_na(avg.units1519.error.lag, 0),
+    avg.units1519.predict = replace_na(avg.units1519.predict, 0),
+    avg.units1519 = replace_na(avg.units1519, 0),
     MAPE = replace_na(MAPE, 0),
     ME = replace_na(ME, 0),
     MPE = replace_na(MPE, 0)
     )
 
 
-boulder.test.nhood.nhood = 
+sf.test.nhood.nhood = 
   merge(
     boulder.nhoods,
-    boulder.test.linear_nhood %>%
+    sf.test.linear_nhood %>%
       filter(regression == "Neighborhood Effects") %>% 
       mutate(count.homes = 1) %>%
       st_drop_geometry() %>%
       group_by(nhood_id) %>%
       summarize(
         count.homes = sum(count.homes, na.rm=TRUE),
-        MAE = mean(price.abserror, na.rm=TRUE),
-        ME  = mean(price.error, na.rm=TRUE),
-        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
+        MAE = mean(units1519.abserror, na.rm=TRUE),
+        ME  = mean(units1519.error, na.rm=TRUE),
+        MAPE = mean(units1519.abserror / units.tot.15_19, na.rm=TRUE) * 100,
         MAPE = ifelse(MAPE>100, 100, MAPE),
-        MPE = mean(price.error / price, na.rm=TRUE) * 100,
+        MPE = mean(units1519.error / units.tot.15_19, na.rm=TRUE) * 100,
         MPE = ifelse(MPE<=-100, -100, MPE),
-        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+        avg.units1519.predict = mean(units1519.predict, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price  = mean(price, na.rm=TRUE) %>%
+        avg.units1519  = mean(units.tot.15_19, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price.lag       = mean(price.lag, na.rm=TRUE) %>%
+        avg.units1519.lag       = mean(units1519.lag, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price.error.lag = mean(price.error.lag, na.rm=TRUE) %>%
+        avg.units1519.error.lag = mean(units1519.error.lag, na.rm=TRUE) %>%
           as.numeric()
       ),
     on='nhood_id',
@@ -433,10 +432,10 @@ boulder.test.nhood.nhood =
   ) %>%
   mutate(
     count.homes = replace_na(count.homes, 0),
-    avg.price.lag = replace_na(avg.price.lag, 0),
-    avg.price.error.lag = replace_na(avg.price.error.lag, 0),
-    avg.price.predict = replace_na(avg.price.predict, 0),
-    avg.price = replace_na(avg.price, 0),
+    avg.units1519.lag = replace_na(avg.units1519.lag, 0),
+    avg.units1519.error.lag = replace_na(avg.units1519.error.lag, 0),
+    avg.units1519.predict = replace_na(avg.units1519.predict, 0),
+    avg.units1519 = replace_na(avg.units1519, 0),
     MAPE = replace_na(MAPE, 0),
     ME = replace_na(ME, 0),
     MPE = replace_na(MPE, 0)
@@ -444,7 +443,7 @@ boulder.test.nhood.nhood =
 
 
 Var1_map = var_cut_map(
-  focus_sf = boulder.test.nhood.linear,
+  focus_sf = sf.test.nhood.linear,
   var_field = 'MPE',
   focus_pal = "ArmyRose",
   pal_rev = TRUE,
@@ -455,7 +454,7 @@ Var1_map = var_cut_map(
 )
 
 Var2_map = var_cut_map(
-  focus_sf = boulder.test.nhood.linear,
+  focus_sf = sf.test.nhood.linear,
   var_field = 'MAPE',
   focus_pal = "Peach",
   pal_rev = TRUE,
@@ -466,7 +465,7 @@ Var2_map = var_cut_map(
 )
 
 Var3_map = var_cut_map(
-  focus_sf = boulder.test.nhood.nhood,
+  focus_sf = sf.test.nhood.nhood,
   var_field = 'MPE',
   focus_pal = "ArmyRose",
   pal_rev = TRUE,
@@ -477,7 +476,7 @@ Var3_map = var_cut_map(
 )
 
 Var4_map = var_cut_map(
-  focus_sf = boulder.test.nhood.nhood,
+  focus_sf = sf.test.nhood.nhood,
   var_field = 'MAPE',
   focus_pal = "Peach",
   pal_rev = TRUE,
@@ -501,39 +500,39 @@ grid.arrange(
 
 ### Plot of Errors
 
-The scatterplots highlight the trends we discussed in the price plots and maps. The Neighborhood model has more clustered errors with price. At the same time, a new trend emerges, specifically the house predictions with little to no error. 
+The scatterplots highlight the trends we discussed in the units.tot.15_19 plots and maps. The Neighborhood model has more clustered errors with units1519. At the same time, a new trend emerges, specifically the house predictions with little to no error. 
 
 ```{r plot_nhood_MAPE}
-#plot of MAPE by neighbors as a function of mean price by neighbors
+#plot of MAPE by neighbors as a function of mean units.tot.15_19 by neighbors
 
 fig_num = 11
 
 lin_nhood_plot = plot(
-    boulder.test.nhood.linear %>% 
-      filter(avg.price.predict>0) %>% 
-      pull(avg.price.predict), 
-    boulder.test.nhood.linear %>% 
-      filter(avg.price.predict>0) %>% 
+    sf.test.nhood.linear %>% 
+      filter(avg.units1519.predict>0) %>% 
+      pull(avg.units1519.predict), 
+    sf.test.nhood.linear %>% 
+      filter(avg.units1519.predict>0) %>% 
       pull(MAPE), 
     main=list("Test Linear Model",font = 3), 
-    xlab="Mean Predicted Price", 
+    xlab="Mean Predicted units.tot.15_19", 
     ylab="MAPE by neighbors")
 
 nhood_nhood_plot = plot(
-    boulder.test.nhood.nhood %>% 
-      filter(avg.price.predict>0) %>% 
-      pull(avg.price.predict), 
-    boulder.test.nhood.nhood %>% 
-      filter(avg.price.predict>0) %>% 
+    sf.test.nhood.nhood %>% 
+      filter(avg.units1519.predict>0) %>% 
+      pull(avg.units1519.predict), 
+    sf.test.nhood.nhood %>% 
+      filter(avg.units1519.predict>0) %>% 
       pull(MAPE), 
     main=list("Neighborhood Effects Model",font = 3), 
-    xlab="Mean Predicted Price", 
+    xlab="Mean Predicted units.tot.15_19", 
     ylab="MAPE by neighbors")
 
 #plot.new()
 par(mfrow=c(1,2), oma=c(0,0,2,0))
 
-Title = glue("Figure {fig_num}: MAPE & Predicted Price by Neighborhood")
+Title = glue("Figure {fig_num}: MAPE & Predicted units.tot.15_19 by Neighborhood")
 mtext(Title, line=0, side=3, outer=TRUE, font=2, cex = 1.5
       )
 
@@ -566,28 +565,28 @@ boulder.tracts.AMI =
 boulder.AMI.test = 
   merge(
     boulder.tracts.AMI,
-    boulder.test.linear_nhood %>%
+    sf.test.linear_nhood %>%
       filter(regression == 'Boulder Test Regression') %>%
       mutate(count.homes = 1) %>%
       st_drop_geometry() %>%
       group_by(above.AMI) %>%
       summarize(
         count.homes = sum(count.homes, na.rm=TRUE),
-        MAE = mean(price.abserror, na.rm=TRUE),
-        ME  = mean(price.error, na.rm=TRUE),
-        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
-        MPE = mean(price.error / price, na.rm=TRUE) * 100,
-        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+        MAE = mean(units1519.abserror, na.rm=TRUE),
+        ME  = mean(units1519.error, na.rm=TRUE),
+        MAPE = mean(units1519.abserror / units.tot.15_19, na.rm=TRUE) * 100,
+        MPE = mean(units1519.error / units.tot.15_19, na.rm=TRUE) * 100,
+        avg.units1519.predict = mean(units1519.predict, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price  = mean(price, na.rm=TRUE) %>%
+        avg.units1519  = mean(units.tot.15_19, na.rm=TRUE) %>%
           as.numeric()
       ),
     on='above.AMI'
   ) %>%
   mutate(
     count.homes = replace_na(count.homes, 0),
-    avg.price.predict = replace_na(avg.price.predict, 0),
-    avg.price = replace_na(avg.price, 0),
+    avg.units1519.predict = replace_na(avg.units1519.predict, 0),
+    avg.units1519 = replace_na(avg.units1519, 0),
     MAPE = replace_na(MAPE, 0),
     ME = replace_na(ME, 0),
     MPE = replace_na(MPE, 0)
@@ -597,28 +596,28 @@ boulder.AMI.test =
 boulder.AMI.nhood = 
   merge(
     boulder.tracts.AMI,
-    boulder.test.linear_nhood %>%
+    sf.test.linear_nhood %>%
       filter(regression == "Neighborhood Effects") %>%
       mutate(count.homes = 1) %>%
       st_drop_geometry() %>%
       group_by(above.AMI) %>%
       summarize(
         count.homes = sum(count.homes, na.rm=TRUE),
-        MAE = mean(price.abserror, na.rm=TRUE),
-        ME  = mean(price.error, na.rm=TRUE),
-        MAPE = mean(price.abserror / price, na.rm=TRUE) * 100,
-        MPE = mean(price.error / price, na.rm=TRUE) * 100,
-        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+        MAE = mean(units1519.abserror, na.rm=TRUE),
+        ME  = mean(units1519.error, na.rm=TRUE),
+        MAPE = mean(units1519.abserror / units.tot.15_19, na.rm=TRUE) * 100,
+        MPE = mean(units1519.error / units.tot.15_19, na.rm=TRUE) * 100,
+        avg.units1519.predict = mean(units1519.predict, na.rm=TRUE) %>%
           as.numeric(),
-        avg.price  = mean(price, na.rm=TRUE) %>%
+        avg.units1519  = mean(units.tot.15_19, na.rm=TRUE) %>%
           as.numeric()
       ),
     on='above.AMI'
   ) %>%
   mutate(
     count.homes = replace_na(count.homes, 0),
-    avg.price.predict = replace_na(avg.price.predict, 0),
-    avg.price = replace_na(avg.price, 0),
+    avg.units1519.predict = replace_na(avg.units1519.predict, 0),
+    avg.units1519 = replace_na(avg.units1519, 0),
     MAPE = replace_na(MAPE, 0),
     ME = replace_na(ME, 0),
     MPE = replace_na(MPE, 0)
@@ -753,36 +752,36 @@ count_format = function(col) format(col, digits=0, big.mark = ",")
 proportion_format = function(col, digits=2) (col*100) %>%
       round(., digits=digits) %>% paste(., '%',sep='')
 
-boulder.test.linear_nhood.AMI = 
-  boulder.test.linear_nhood %>%
+sf.test.linear_nhood.AMI = 
+  sf.test.linear_nhood %>%
     mutate(count.homes = 1) %>%
     group_by(regression, above.AMI) %>%
     st_drop_geometry() %>%
     summarize(
         count.homes = sum(count.homes, na.rm=TRUE) %>%
           count_format(),
-        MAPE = (mean(price.abserror / price, na.rm=TRUE)) %>%
+        MAPE = (mean(units1519.abserror / units.tot.15_19, na.rm=TRUE)) %>%
           proportion_format(digits=0),
-        avg.price.predict = mean(price.predict, na.rm=TRUE) %>%
+        avg.units1519.predict = mean(units1519.predict, na.rm=TRUE) %>%
           count_format() %>% paste("$",.),
-        avg.price  = mean(price, na.rm=TRUE) %>%
+        avg.units1519  = mean(units.tot.15_19, na.rm=TRUE) %>%
           count_format() %>% paste("$",.)
       ) %>%
   ungroup()
 #eq = as.character(expression("="))
-count0 = boulder.test.linear_nhood.AMI$count.homes[1]
-count1 = boulder.test.linear_nhood.AMI$count.homes[2]
+count0 = sf.test.linear_nhood.AMI$count.homes[1]
+count1 = sf.test.linear_nhood.AMI$count.homes[2]
 
 header = c(1, 3,3)
 #names(header) <- c(' ', glue("Below AMI ({count0})"), glue("Above AMI ({count1})"))
 names(header) <- c(' ', glue("Below AMI"), glue("Above AMI"))
 
-split(boulder.test.linear_nhood.AMI, boulder.test.linear_nhood.AMI$above.AMI) %>%
+split(sf.test.linear_nhood.AMI, sf.test.linear_nhood.AMI$above.AMI) %>%
   lapply(., function(df) 
-    df %>% select(MAPE, avg.price, avg.price.predict)) %>%
+    df %>% select(MAPE, avg.units1519, avg.units1519.predict)) %>%
   do.call("cbind", .) %>%
   cbind(
-    boulder.test.linear_nhood.AMI$regression %>% unique(), 
+    sf.test.linear_nhood.AMI$regression %>% unique(), 
     .) %>%
   kable(.,
         caption = glue('Table {tab_num}: Area Median Income by Model'),
