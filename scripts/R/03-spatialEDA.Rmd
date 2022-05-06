@@ -1,0 +1,897 @@
+
+In this section, I want to find out where there are clusters of new permits and housing units. 
+
+First, I will take advantage of *Local Indicators of Spatial Autocorrelation* to determine if there are statistical significance clusters of new permits and units. Secondly, I will compared clusters between different time periods. Finally, I will look to see if predictor variables are different inside and outside of clusters
+
+## Spatial Autocorrelation
+
+The best way to understand how *geographic* the permit data set is, is to get different metrics of Spatial Autocorrelation. Simply, these metrics understand if the housing's values are correlated to the housing's location or if they are randomly located.
+
+```{r spat_intro}
+
+# process borrowed from MUSA 508's (Fichman & Harris) Lab 8, Public Policy Analytics (Steif et al) Book Chapter 4, and David O'Sullivan's Berkeley & VUW courses
+## https://github.com/mafichman/MUSA_508_Lab
+## https://urbanspatial.github.io/PublicPolicyAnalytics/intro-to-geospatial-machine-learning-part-2.html
+## https://github.com/DOSull/GISC-422
+
+
+
+
+st_weights = function(focus_sf, queen=TRUE){
+  focus_sf %>% 
+    # get neighbors
+    poly2nb(as_Spatial(.), queen=queen) %>%
+    # neighbor weights
+    nb2listw(., style="W", zero.policy=TRUE)
+}
+
+sf.predict.weights = 
+  st_weights(sf.predict)
+
+# sf.predict = 
+#   sf.predict %>%
+#   mutate(
+#     units1519.lag = 
+#       lag.listw(sf.predict.weights, units1519.predict),
+#     units1519.error.lag = 
+#       lag.listw(sf.predict.weights, units1519.error)
+#   )
+
+```
+
+### Moran's I
+
+This is a good metric to start with as Moran's I will give us an overall measurement spatial association between value and location. To obtain Moran's I, we runs 1000 permutations that randomly assigns the Block Groups new neighbors. The metric ultimately measures how different the values of observed neighbors are compared to the simulated neighbors. 
+
+Figure 2.1 displays Moran's I for Observed & Simulated values of Housing Permits & Units of 2010 to 2015. The grey histogram is the distribution of Moran's I of 1000 randomized versions of Block Groups. Their Moran's I is close to zero as their is little spatial relationship between neighbor's and their values because they were randomly created. The Red line is the Observed Moran's I -- which if right of the simulated distribution suggests that there *is* a spatial relationship between neighbors and their values.
+
+```{r global_morans_i}
+
+fig_num = 2.1
+fig_title = glue("Figure {fig_num}: Observed and Simulated Moran's I")
+
+plot_moransI = function(
+  focus_col, focus_sf=sf.predict, focus_weights=sf.predict.weights,
+  moransIcolor = "red", samplecolor="lightgrey", title = 'Housing', xlab="Moran's I"
+  ){
+  focus_sf.MoransI = 
+    moran.mc(
+      focus_sf[[focus_col]],
+      focus_weights, 
+      nsim = 999
+      )
+  
+  morans_plot = 
+    ggplot(
+      focus_sf.MoransI$res[c(1:999)] %>% as.data.frame(), 
+      aes(focus_sf.MoransI$res[c(1:999)])
+    ) +
+    geom_histogram(binwidth = 0.01, color=samplecolor,fill='lightgrey') +
+    geom_vline(
+      aes(xintercept = focus_sf.MoransI$statistic), 
+      colour = moransIcolor,size=1) +
+    #scale_x_continuous(limits = c(-1, 1)) +
+    labs(
+      title=title,
+      #subtitle= "Observed Moran's I in orange",
+      x=xlab,
+      y="Count") +
+    plotTheme()
+  return(morans_plot)
+  }
+
+
+do.call(
+  grid.arrange,
+  c(
+    list(
+      plot_moransI(
+        'permits.tot.15_19', 
+        title='Housing Permits 2015-19', 
+        samplecolor='royalblue', xlab=""),
+      plot_moransI(
+        'units.tot.15_19', 
+        title='Housing Units 2015-19', 
+        samplecolor='salmon')
+    ), 
+    ncol = 1, 
+    top = fig_title
+  ))
+
+```
+
+What we can take out of this plot is that the spatial relationship is stronger between the amount of housing units than new permits in Block Groups. This suggests that new permits are more evenly distributed across the city. The amount of new housing units are more clustered. 
+
+## Local Moran's I
+
+Let's try to determine *where* this clustering is happening by getting the Local Moran's I of each Block Group. 
+```{r local_morans_i}
+
+get_local_morans = function(focus_sf, focus_col, focus_weights){
+  localmoran(
+    focus_sf[[focus_col]], 
+    focus_weights, zero.policy=TRUE) %>% 
+  as.data.frame()
+}
+
+st_local_morans = function(focus_sf, focus_col, focus_weights, p_value=0.05){
+  # get local morans I for each area
+  focus_localmorans = 
+    get_local_morans(focus_sf, focus_col, focus_weights)
+  # join local Moran's I results to fishnet
+  focus_localmorans_sf = 
+    cbind(
+      focus_localmorans, 
+      focus_sf %>% 
+        as.data.frame()) %>% 
+    st_sf() %>%
+    dplyr::select(
+      focus_col = focus_col,
+      local_morans_i = Ii,
+      pvalue = `Pr(z != E(Ii))`) %>%
+    mutate(
+      hotspots = ifelse(
+        pvalue <= p_value, 1, 
+        #ifelse(pvalue >= (1-p_value), -1,0)
+        0
+        ))
+  return(focus_localmorans_sf)
+}
+
+cols_addprefix = function(focus_df, prefix, sep='.'){
+  cols = colnames(focus_df)
+  cols[cols!='geometry'] = 
+    sapply(cols[cols!='geometry'], function(c) paste(prefix, c, sep=sep))
+  return(cols)
+}
+rename_addprefix = function(focus_df, prefix, sep='.'){
+  cols = cols_addprefix(focus_df, prefix, sep=sep)
+  colnames(focus_df) = cols
+  return(focus_df)
+}
+
+
+var.dvs.plot = c(
+  'units.tot.15_19',
+  'permits.tot.15_19'
+  )
+
+pval = .05
+
+focus_sf.permits.localmorans = 
+  st_local_morans(
+    sf.predict, 'permits.tot.15_19', 
+    sf.predict.weights, p_value=pval) %>% 
+  rename_addprefix(., 'permits1519')
+  
+focus_sf.units.localmorans = 
+  st_local_morans(
+    sf.predict, 'units.tot.15_19', 
+    sf.predict.weights, p_value=pval) %>% 
+  rename_addprefix(., 'units1519')
+
+
+plot_localmorans_all = function(
+  focus_localmorans, ptitle="Local Morans I",
+  mainlab='Observed Values',
+  labs = c('Local Morans I', 'P-Values', 'Significant Clusters (p>.05)'),
+  mainpal='YlOrRd',
+  pals = c('Purples', 'PiYG', 'Reds')
+  ){
+  pals = c(mainpal,pals)
+  labs = c(mainlab, labs)
+  focus_localmorans_plot = 
+    focus_localmorans %>% 
+    gather(Variable, Value, -geometry)
+  ## This is just for plotting
+  vars = unique(focus_localmorans_plot$Variable)
+  varList = list()
+  
+  for(i in seq_along(vars)){
+    var = vars[i]
+    pal = pals[i]
+    lab = labs[i]
+    plot_df = focus_localmorans_plot %>%
+            filter(Variable == var)
+    val_len = length(unique(plot_df$Value))
+    pal = 
+      brewer.pal(
+        ifelse(
+          val_len>9, 9, val_len),
+                 name=pal)
+    if (val_len<9){pal[1]='#FFFFFF'}
+    if (i==2){
+      pal[1]='#FFFFFF'
+      if(mainpal!='YlOrRd'){
+      pal[2]='#FFFFFF'
+      pal[3]='#FFFFFF'
+      pal[4]='#FFFFFF'
+      pal[5]='#FFFFFF'}
+      }
+    varList[[i]] = 
+      ggplot() +
+      geom_bound(fill='lightgrey', color=NA) + 
+      geom_sf(
+          data = plot_df,
+          aes(fill = Value), 
+          colour='lightgrey', 
+          size=.01
+          ) +
+      
+      geom_quad(size=4) + 
+      #geom_bound(fill=NA, color='black',lw=.4) + 
+      scale_fill_gradientn(colors = pal) + 
+      #dist.labels.w + 
+      labs(title=lab) +
+      mapTheme() #+
+      #theme(legend.position="bottom")
+    }
+  
+  do.call(grid.arrange,c(varList, ncol = 2, top = ptitle))
+  }
+
+```
+
+Figures 2.2 & 2.3 show the 4 step process of finding Local Indicators of Spatial Autocorrelation -- specifically the clusters. The steps & maps show how:
+1. we find the observed values (e.g. Permit Counts), 
+2. get the Moran's I of each Block Group, 
+3. get the significance (p-value) of that Moran's I compared to the simulations, and 
+4. find clusters of block groups that have a high significance (p>.05) -- meaning that they are in the top 5%.
+
+```{r setup_comp}
+
+sf.permits.hotspots =
+  cbind(
+    st_local_morans(
+      sf.predict, 'permits.tot.00_04', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'permits0004') %>%
+    select(permits0004.hotspots) %>% 
+      st_drop_geometry(), 
+    
+    st_local_morans(
+      sf.predict, 'permits.tot.05_09', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'permits0509') %>%
+    select(permits0509.hotspots) %>% 
+      st_drop_geometry(), 
+    
+    st_local_morans(
+      sf.predict, 'permits.tot.10_14', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'permits1014') %>%
+    select(permits1014.hotspots) %>% 
+      st_drop_geometry(), 
+    
+    st_local_morans(
+      sf.predict, 'permits.tot.15_19', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'permits1519') %>%
+    select(permits1519.hotspots)
+  ) %>%
+  st_sf()
+  
+  
+sf.units.hotspots =
+  cbind(
+    st_local_morans(
+      sf.predict, 'units.tot.00_04', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'units0004') %>%
+    select(units0004.hotspots) %>% 
+      st_drop_geometry(), 
+    
+    st_local_morans(
+      sf.predict, 'units.tot.05_09', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'units0509') %>%
+    select(units0509.hotspots) %>% 
+      st_drop_geometry(), 
+    
+    st_local_morans(
+      sf.predict, 'units.tot.10_14', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'units1014') %>%
+    select(units1014.hotspots) %>% 
+      st_drop_geometry(), 
+    
+    st_local_morans(
+      sf.predict, 'units.tot.15_19', 
+      sf.predict.weights, p_value=pval) %>% 
+    rename_addprefix(., 'units1519') %>%
+    select(units1519.hotspots)
+  ) %>%
+  st_sf()
+
+plot_localmorans_hotspot = function(
+  focus_localmorans, ptitle="Local Morans I",
+  labs = c('2000-04', '2005-09', '2010-14', '2015-19'),
+  pals = c('RdPu', 'PuRd',  'YlOrBr', 'Reds'),
+  limits=TRUE, buffer=200, 
+  ranks = c(1, 2, 3)
+  ){
+    
+  focus_localmorans_plot = 
+    focus_localmorans %>% 
+    gather(Variable, Value, -geometry)
+  
+  focus_limits_sf = focus_localmorans_plot
+  if (limits == TRUE){
+    focus_limits_sf = 
+      focus_limits_sf %>%
+        filter(Value==1)}
+  focus_limits_sf = 
+    focus_limits_sf %>%
+      st_union() %>%
+      st_sf()
+  
+  ## This is just for plotting
+  vars = unique(focus_localmorans_plot$Variable)
+  varList = list()
+  
+  for(i in seq_along(vars)){
+    var = vars[i]
+    pal = pals[i]
+    lab = labs[i]
+    plot_df = focus_localmorans_plot %>%
+            filter(Variable == var)
+    val_len = length(unique(plot_df$Value))
+    pal = 
+      brewer.pal(3, name=pal)
+    pal = c('#FFFFFF', pal[3])
+    varList[[i]] = 
+      ggplot() +
+      geom_bound(fill='lightgrey', color=NA) + 
+      geom_sf(
+          data = plot_df,
+          fill='#FFFFFF',
+          colour=NA
+          ) +
+      geom_sf(
+          data = plot_df,
+          aes(fill = Value), 
+          colour='lightgrey', 
+          alpha=.8,
+          size=.2
+          ) + 
+      #geom_quad(size=4) + 
+      geom_nhood(ranks=ranks) +
+      geom_bound(fill=NA, color='black',size=.5, alpha=.5) + 
+      scale_fill_gradientn(colors = pal, guide="none") + 
+      #dist.labels.w + 
+      plot_limits(data=focus_limits_sf, buffer=buffer) + 
+      labs(title=lab) +
+      mapTheme()
+    }
+  
+  do.call(grid.arrange,c(varList, ncol = 2, top = ptitle))
+}
+
+```
+
+### Permit Count Clusters
+
+Figure 2.2 shows the process of finding clusters of high Permit Counts for 2015 to 2019. The first plot shows simple counts of permits, with Downtown/SOMA (NE), Bayview (SE), and general eastern portion of San Francisco see the highest permits. The Local Moran's I highlights that those block group's values are spatially correlated. The P-Value map provides a measure of that significance. Notice the higher permit count clusters are purple but the low counts are green. The final significant cluster map isolates the significantly highest clusters of Downtown and Portola/Bayview areas. 
+
+
+```{r LISA_permits, fig.width=8, fig.height=6}
+
+fig_num = 2.2
+fig_title = glue("Figure {fig_num}: Local Indicators of Spatial Autocorrelation, Permits 15-19")
+
+plot_localmorans_all(
+  focus_sf.permits.localmorans, mainpal='YlGnBu',
+  mainlab = "Observed Permit Counts",
+  ptitle=fig_title
+  )
+
+```
+
+Figure 2.3 shows the history of the Permit Clusters from 2000 to 2019. The higher permit clusters aren't as consistent as housing clusters. There is a trend of Downtown (NE) and Portola (SE) seeing clusters of high amounts of permits. By 2015-19, the clusters are larger and distinctly in the Downtown & Portola areas -- suggesting that there is more permitting in those areas or the rest of San Francisco has less permitting.
+
+```{r LISA_permits_decade, fig.width=8, fig.height=6}
+
+fig_num = 2.3
+fig_title = glue("Figure {fig_num}: Significant Clusters of Permits Counts")
+
+plot_localmorans_hotspot(sf.permits.hotspots, ptitle=fig_title, ranks=c(1,2))
+
+```
+
+### Housing Unit Count Clusters
+
+Figure 2.4 provides more understanding of the count of housing units. What we find is that the clustering is more focused on the Downtown, SOMA, & Tenderloin areas (NE). The P-Value map shows that the higher rate of housing is significantly clustered in the downtown. 
+
+What's odd is that the Bayview area (SE) that had high permit clusters in Figure 2.2, actually have lower housing p-values. Suggesting that Southeastern areas have a lot of new permits but not adding that much housing units. 
+
+Another interesting trend is that the areas immediately outside of the clusters have low p-values and lower housing units added. So Downtown, the Tenderloin, and the Mission can add new housing -- but elsewhere has a cap.  
+
+```{r LISA_units, fig.width=8, fig.height=6}
+fig_num = 2.4
+fig_title = glue("Figure {fig_num}: Local Indicators of Spatial Autocorrelation, Permits 15-19")
+
+plot_localmorans_all(
+  focus_sf.units.localmorans, 
+  ptitle=fig_title
+  )
+```
+
+Figure 2.5 provides a time series of housing clusters. Mostly suggesting that new housing is significant in Downtown, the Tenderloin, and SOMA. One very interesting change is that the cluster is spreading less into North Beach, but more into the Mission and Hayes Valley. 
+
+The Mission is qualitatively been deemed the 'battleground of gentrification' in the last decade as it is a powder keg of displacement: low-income, immigrants, large supply of rental housing, nearby BART, and just outside the major employment centers of SOMA, Mission Bay, & Downtown.
+
+```{r unts}
+web_crs = 'EPSG:4326'
+
+hot_json_path = "C:/Users/nelms/Documents/Penn/MUSA-611/sf-building-permits-web-map/data/sf_units_hotspots.geojson"
+
+sf.units.hotspots %>%
+  filter(units1519.hotspots==1) %>%
+  st_union() %>% 
+  st_transform(crs = web_crs) %>%
+  st_write(hot_json_path)
+
+```
+
+
+```{r LISA_permits_decade, fig.width=8, fig.height=6}
+
+fig_num = 2.5
+fig_title = glue("Figure {fig_num}: Significant Clusters of Housing Unit Counts")
+
+plot_localmorans_hotspot(
+  sf.units.hotspots, ptitle=fig_title,
+  buffer = 1000
+  )
+
+```
+
+## Comparing Clusters to Predictors
+
+To better understand this 'powder keg', lets compare the demographics inside and outside of these clusters.
+
+
+```{r setup_clustcomp}
+
+sf.predict$permits1519.hotspots = 
+  sf.permits.hotspots$permits1519.hotspots
+sf.predict$units1519.hotspots = 
+  sf.units.hotspots$units1519.hotspots
+
+focus.col = 'units1519.hotspots'
+sf.predict$focus.col = sf.predict$units1519.hotspots
+
+focus.vars = c(
+  'poc_linc.pct.10_15',
+  'wht.pct.10_15',
+  'college.pct.18',
+  'mov.pct.18',
+  'occ_own_ch.pct.00_18',
+  'bsqft_res.pct.2019',
+  'permits.tot.15_19',
+  'evictions.tot.00_19',
+  'occ_own.tot.18'
+)
+
+sf.predict %>%
+    st_drop_geometry() %>%
+    select(c(focus.col, rev(focus.vars))) %>%
+    gather(Variable, value, -focus.col) %>%
+  ggplot(aes(focus.col, value, fill=focus.col)) + 
+    geom_bar(
+      position = "dodge", 
+      stat = "summary", fun.y = "count"
+      ) + 
+    facet_wrap(~Variable, scales = "free") +
+    #scale_fill_manual(values = palette2) +
+    labs(
+      x="Took the Housing Credit", 
+      y="Value", 
+      title = title
+      #subtitle = "(continous outcomes)"
+      ) +
+    theme(legend.position = "none")
+
+```
+
+```{r setup_function}
+
+
+get_corr_data = function(
+  focus.df = sf.predict,
+  iv = "evictions.tot.10_19",
+  dv = "permits1519.hotspots",
+  test = 'chi-test',
+  full = FALSE,
+  test_return = FALSE
+){
+  
+  if (test %in% c('chi-test', 'chi')){
+    table = 
+      focus.df[,c(iv,dv)] %>%
+        table(., useNA='ifany')
+    
+    row.names(table) = 
+      row.names(table) %>% 
+      replace_na(., 'NA')
+    
+    colnames(table) = 
+      colnames(table) %>% 
+      replace_na(., 'NA')
+
+    table.test = 
+      chisq.test(table)
+    table.obs = 
+      table.test$observed
+    table.exp = 
+      table.test$expected
+    test.stat = 
+      table.test$statistic  %>% 
+      round_thresh(digits = 2)
+    test.doff = 
+      table.test$parameter
+    test.pval = 
+      table.test$p.value %>% 
+      round_thresh()
+    
+    test.stats.names = c(test,'degrees of freedom', 'p-value')
+    test.stats.values = c(test.stat, test.doff, test.pval)
+  }
+  
+  if (test %in% c('t-test', 't')){
+    test.fm = as.formula(glue('{iv} ~ {dv}'))
+    #test.label = glue("{iv} by {dv %>% gsub('.obs','',.)}")
+    
+    table.test = 
+      t.test(
+        formula = test.fm,
+        data = focus.df
+          )
+    
+    test.stat =
+      table.test$statistic %>% 
+      round_thresh(digits = 2, int_check = TRUE)
+    
+    test.doff =
+      table.test$parameter %>% 
+      round_thresh(digits = 1, int_check = TRUE)
+    
+    test.pval =
+      table.test$p.value %>% 
+      round_thresh()
+    
+    test.stats.names = c(test,'degrees of freedom', 'p-value')
+    test.stats.values = c(test.stat, test.doff, test.pval)
+  }
+  
+  if (test %in% c('wilcox', 'MWW')){
+    test.fm = as.formula(glue('{iv} ~ {dv}'))
+    test.label = glue("{iv} by {dv %>% gsub('.obs','',.)}")
+    
+    table.test = 
+      wilcox.test(
+        formula = test.fm,
+        data = focus.df
+          )
+    
+    test.stat =
+      table.test$statistic %>% 
+      round_thresh(digits = 2, int_check = TRUE)
+
+    test.pval =
+      table.test$p.value %>% 
+      round_thresh()
+    
+    test.stats.names = c(test, 'p-value')
+    test.stats.values = c(test.stat, test.pval)
+  }
+  
+  test.stats = set_names(
+    nm  = test.stats.names,
+    x   = test.stats.values)
+  
+  if (full==TRUE){
+    table.results = 
+      cbind(
+      table.obs,
+      table.exp
+      )
+    dv.colnames = colnames(table.obs)
+    
+    multi.col.subindex =
+      c(
+        paste(dv.colnames, '.observed', sep=''),
+        paste(dv.colnames, '.expected', sep='')
+          )
+    colnames(table.results) = multi.col.subindex
+    
+    colnames_ranked = 
+      sort_sub_sep(
+        colnames(table.results), 
+        order   = c(1, 2),
+        rev     = c('', 'rev'),
+        length  = 2)
+    table.results = table.results[,colnames_ranked$col]
+    
+    return(table.results)
+  }
+  
+  if(test_return==TRUE){
+    return(table.test)
+  }
+  
+  if (full!=TRUE){
+    return(test.stats)
+  }
+}
+
+df_corr_data = function(
+  dv = 'permits1519.hotspots',
+  ivs = cont_vars,
+  test = 'chi-test',
+  focus.df = sf.predict
+){
+  corr_df = data.frame()
+  for (focus_var in ivs){
+    var_list = get_corr_data(
+      focus.df = focus.df,
+      dv = dv, 
+      iv = focus_var, 
+      test=test)
+    var_list = c('iv'=focus_var, var_list)
+    corr_df = rbind(
+      corr_df,
+      as.data.frame(t(var_list)))
+  }
+  return(corr_df)
+  }
+
+```
+
+### T-Test & Mann-Whitney-Wilcoxon
+
+In Table 2, it displays two independence tests measuring the predictor variable's binary groups separation. 
+
+The first test is the Two Independent Samples **T-Test** which measures the means, standard deviation, & number of observations of the two binaries. The T-Statistic is the ratio of difference in the means -- higher suggests the means are separate, lower suggests they are similar. A small p-value (<.001) suggests that the statistic is valuable. 
+
+The second test is the **Wilcoxon rank-sum / Mann-Whitney-Wilcoxon** (MWW) test which measures if the two binary populations of the binary come from distinct populations. It is important to use the MWW test as it doesn't assume the variables are normally distributed. This is helpful as the probability distribution suggests many of the variables have skewed distributions. For the MWW Statistic, significantly separate values have low P-values (<0.05). 
+
+#### Differences Inside & Outside of the High Permits Cluster
+
+There's alot to pull from **Table 2: difference between variables in and out of the high permits cluster**. The T-Test & MWW statistics show that there are large demographic differences in areas with higher amounts of permits. Inside areas with higher of permits there are:
+
+* Less College Educated People
+* Less White People (in 1990 & 2018) by Percent & Total
+* More White People moving in between 2010 and 2015
+
+This suggests there is a demographic change for areas with more permits. But as stated with the Moran's I, permits are more evenly dispersed so there isn't as much contrast inside and outside of the cluster.
+
+```{r clustcomp_units_mww}
+
+var.dv = 'permits1519.hotspots'
+
+var.ivs = c(vars.ivs.disc_fin, vars.ivs.cont_fin)
+cont_vars = var.ivs
+focus_df = sf.predict %>%
+    select(c(
+      var.dv,
+      cont_vars
+      ))
+## Note: Using an external vector in selections is ambiguous.
+## i Use `all_of(var.dv)` instead of `var.dv` to silence this message.
+## i See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+## This message is displayed once per session.
+ttest_df = data.frame()
+
+# focus_df %>% gather() %>%
+#   group_by(key, value) %>%
+#   summarize(counts=n())
+# 
+# focus_df %>% select(cont_vars, var.dv) %>%
+#     filter(.data[[var.dv]]==0)
+
+for (cont_var in cont_vars){
+
+  bin_df = focus_df %>% 
+    select(cont_var, var.dv) %>%
+    filter(!is.na(cont_var))
+  
+  bin_FALSE = bin_df %>%
+    filter(.data[[var.dv]]==0) %>%
+    pull(cont_var)
+  bin_TRUE = bin_df %>%
+    filter(.data[[var.dv]]==1) %>%
+    pull(cont_var)
+  
+  bin_test =
+    t.test(bin_FALSE, bin_TRUE, alternative = "two.sided")
+
+  tstat = bin_test$statistic %>% as.numeric() %>% round(2)
+  doff = bin_test$parameter %>% as.numeric() %>% round()
+  pval = bin_test$p.value %>%
+    round_thresh(., thresh = .001,  digits = 3)
+  mean_FALSE =
+    mean(bin_FALSE, na.rm=TRUE) %>% round(1)
+  mean_TRUE =
+    mean(bin_TRUE, na.rm=TRUE) %>% round(1)
+
+  ttest_df = rbind(
+    ttest_df,
+    c(cont_var, mean_FALSE,mean_TRUE,tstat,doff,pval)
+  )}
+## Note: Using an external vector in selections is ambiguous.
+## i Use `all_of(cont_var)` instead of `cont_var` to silence this message.
+## i See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+## This message is displayed once per session.
+
+colnames(ttest_df) =
+  c('iv', "FALSE", "TRUE",
+    "Statistic", "DF", 'P-Value')
+
+
+tab_num = 2
+title = glue("Table {tab_num}: T-Test & MWW of Binary Variables")
+
+housing.cont.MWW = 
+  df_corr_data(
+    dv = 'permits1519.hotspots',
+    ivs = cont_vars,
+    test = 'MWW'
+  )
+
+new_cols = c('iv', "Outside Cluster", "Inside Cluster",
+    "Statistic", 'DF', 'P-Value', 'Statistic', 'P-Value')
+
+housing.cont.ttest = 
+  ttest_df
+  
+ merge(
+    housing.cont.ttest,
+    housing.cont.MWW,
+    on='iv',
+    sort=FALSE
+    ) %>%
+  mutate(
+    MWW = MWW %>% as.numeric() %>% count_format()
+  ) %>%
+  kable(., caption = title, label = NA,
+        col.names = new_cols) %>%
+  kable_styling() %>%
+  add_header_above(
+    header=
+      c(' '=1,'Mean'=2,'T-Test'=3, 'MWW'=2)
+  ) %>%
+  kableExtra::footnote(
+    alphabet =
+      c(
+        "Two independent samples t-test",
+        "Wilcoxon rank sum test",
+        "significance level: 0.05"
+               ))
+
+```
+
+#### Differences Inside & Outside of the High Added Housing Cluster
+
+Table 3 adds to Table 2 by showing the difference inside and outside of the cluster of high housing added. Inside the cluster of higher amounts of housing added, there is sharper differences in building form and demographics. 
+
+Since the cluster is largely downtown, it makes since that there is:
+* higher amounts of units being added (97.7 new units vs 1,643.9 new units)
+* closer to Bay Area Regional Transit stations
+* less people who own a house
+
+Inside of the cluster, there is a different and changing demographic with:
+
+* higher share of those who have recently moved
+* less people who are college educated
+* higher amounts of white people outside the cluster in 1990 & 2018
+* but the change in percent white is increasing more inside the cluster
+* in 1990, there were more low income and people of color inside the cluster, rather than out. But 2018 saw a decrease in the share of both inside the cluster
+
+```{r clustcomp_units_mww}
+
+var.dv = 'units1519.hotspots'
+
+var.ivs = c(vars.ivs.disc_fin, vars.ivs.cont_fin)
+cont_vars = var.ivs
+focus_df = sf.predict %>%
+    select(c(
+      var.dv,
+      cont_vars
+      ))
+## Note: Using an external vector in selections is ambiguous.
+## i Use `all_of(var.dv)` instead of `var.dv` to silence this message.
+## i See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+## This message is displayed once per session.
+ttest_df = data.frame()
+
+# focus_df %>% gather() %>%
+#   group_by(key, value) %>%
+#   summarize(counts=n())
+# 
+# focus_df %>% select(cont_vars, var.dv) %>%
+#     filter(.data[[var.dv]]==0)
+
+for (cont_var in cont_vars){
+
+  bin_df = focus_df %>% 
+    select(cont_var, var.dv) %>%
+    filter(!is.na(cont_var))
+  
+  bin_FALSE = bin_df %>%
+    filter(.data[[var.dv]]==0) %>%
+    pull(cont_var)
+  bin_TRUE = bin_df %>%
+    filter(.data[[var.dv]]==1) %>%
+    pull(cont_var)
+  
+  bin_test =
+    t.test(bin_FALSE, bin_TRUE, alternative = "two.sided")
+
+  tstat = bin_test$statistic %>% as.numeric() %>% round(2)
+  doff = bin_test$parameter %>% as.numeric() %>% round()
+  pval = bin_test$p.value %>%
+    round_thresh(., thresh = .001,  digits = 3)
+  mean_FALSE =
+    mean(bin_FALSE, na.rm=TRUE) %>% round(1)
+  mean_TRUE =
+    mean(bin_TRUE, na.rm=TRUE) %>% round(1)
+
+  ttest_df = rbind(
+    ttest_df,
+    c(cont_var, mean_FALSE,mean_TRUE,tstat,doff,pval)
+  )}
+## Note: Using an external vector in selections is ambiguous.
+## i Use `all_of(cont_var)` instead of `cont_var` to silence this message.
+## i See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+## This message is displayed once per session.
+
+colnames(ttest_df) =
+  c('iv', "FALSE", "TRUE",
+    "Statistic", "DF", 'P-Value')
+
+
+tab_num = 3
+title = glue("Table {tab_num}: Housing Units Inside & Outside of the Cluster")
+
+housing.cont.MWW = 
+  df_corr_data(
+    dv = 'permits1519.hotspots',
+    ivs = cont_vars,
+    test = 'MWW'
+  )
+
+new_cols = c('iv', "Outside Cluster", "Inside Cluster",
+    "Statistic", 'DF', 'P-Value', 'Statistic', 'P-Value')
+
+housing.cont.ttest = 
+  ttest_df
+  
+ merge(
+    housing.cont.ttest,
+    housing.cont.MWW,
+    on='iv',
+    sort=FALSE
+    ) %>%
+  mutate(
+    MWW = MWW %>% as.numeric() %>% count_format()
+  ) %>%
+  kable(., caption = title, label = NA,
+        col.names = new_cols) %>%
+  kable_styling() %>%
+  add_header_above(
+    header=
+      c(' '=1,'Mean'=2,'T-Test'=3, 'MWW'=2)
+  ) %>%
+  kableExtra::footnote(
+    alphabet =
+      c(
+        "Two independent samples t-test",
+        "Wilcoxon rank sum test",
+        "significance level: 0.05"
+               ))
+
+```
+
+The takeaway of the cluster exercise is that the Downtown, Mission, and Tenderloin areas see significantly higher amounts of housing being added and have a changing demographic. 
+

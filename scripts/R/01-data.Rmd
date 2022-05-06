@@ -1,0 +1,511 @@
+
+```{r vars_setup}
+
+DIR = "C:/Users/nelms/Documents/Penn/CPLN-680/Permit_Metrics"
+setwd(DIR)
+
+# sf feet proj
+project_crs = st_crs('EPSG:7132')
+
+```
+
+## Permits by Block Group
+
+```{r vars_}
+
+# data pre-cleaned in python
+data_path =
+   paste(DIR, "/data/clean/sf_dataset_20220414.geojson", sep="")
+sf.data =
+  st_read(data_path) %>%
+  st_transform(project_crs)
+
+```
+
+### Feature
+
+```{r vars_sales_lots}
+
+
+```
+
+### Feature
+
+``` {r vars_sales_engineer}
+
+```
+
+
+## Other Dataset
+
+### City Boundary
+``` {r vars_boundaries}
+data_path =
+   paste(DIR, "/data/raw/georeference/sf_neighborhoods.geojson", sep="")
+sf.nhood =
+  st_read(data_path) %>%
+  st_transform(., crs=project_crs)
+
+data_path =
+   paste(DIR, "/data/clean/sf_dataset_20220414.geojson", sep="")
+sf.boundary = 
+  st_read(data_path) %>%
+  st_transform(., crs=project_crs) %>%
+  st_union()
+
+data_path = 
+  paste(DIR, "/data/raw/georeference/sf_quadrants.geojson", sep="")
+sf.quad = 
+  st_read(data_path) %>%
+  st_transform(., crs=project_crs) %>%
+  select(quad)
+
+geom_bound = function(
+  data = sf.boundary,
+  fill = 'transparent', color='black',
+  size=1, ...
+  ){
+    c_plot = geom_sf(data = data, fill = fill, color=color, size=size, ...)
+    return(c_plot)}
+
+geom_dash = function(
+  data = sf.boundary,
+  fill = 'transparent', color='grey',
+  lwd=.1, #linetype = "dashed",
+  ...
+  ){
+    c_plot = geom_sf(data = data, fill = fill, color=color,
+          lwd=lwd,linetype = linetype, ...)
+    return(c_plot)}
+
+plot_limits = function(
+  data = sf.boundary$geometry,
+  ## buffer between plot's limits and the geometry 
+  ## (in unit of geometry column)
+  buffer = 0
+){
+  ## creates bounding box
+  poly.bbox =
+    data %>% st_union() %>%
+    ## buffers the geometry so the ultimate plot has margins
+    st_buffer(buffer) %>%
+    st_bbox()
+  return(
+    ## returns the 'coord_sf' function which you can add to any plot
+    coord_sf(
+      xlim = c(poly.bbox['xmin'], poly.bbox['xmax']),
+      ylim = c(poly.bbox['ymin'], poly.bbox['ymax']),
+      crs = st_crs(data)
+  ))}
+
+sf.nhood$nhood = sf.nhood$nhood %>% 
+  gsub("Bayview Hunters", "Bayview/Hunters", ., fixed = TRUE) %>%
+  gsub("Financial District", "Downtown", ., fixed = TRUE) %>%
+  gsub("South of Market", "SOMA", ., fixed = TRUE) %>%
+  sapply(., function(s)
+    strsplit(s, '/', fixed = TRUE)[[1]][1]
+    ) %>%
+  as.character()
+
+sf.nhood = 
+  rbind(
+    sf.nhood %>% 
+      filter(grepl('Richmond', nhood, fixed = TRUE)) %>%
+      st_union() %>%
+      st_sf() %>%
+      mutate(nhood='Richmond'),
+    sf.nhood %>% 
+      filter(!grepl('Richmond', nhood, fixed = TRUE))
+  ) %>%
+  st_sf()
+
+merge_geom = function(focus_list, replace_word, focus_sf=sf.nhood){
+  rbind(
+    focus_sf %>%
+      filter(nhood %in% focus_list) %>%
+      st_union() %>%
+      st_sf() %>%
+      mutate(nhood=replace_word),
+    focus_sf %>%
+      filter(!(nhood %in% focus_list))
+  ) %>%
+  st_sf()}
+westfix = 
+replace_word = 
+
+sf.nhood = merge_geom(
+  c('Pacific Heights', 'Japantown', 'Western Addition'),
+  'Western\nAddition'
+  )
+
+sf.nhood = merge_geom(
+  c('Haight Ashbury', 'Castro'),
+  'Haight-Ashbury Castro'
+  )
+# sf.nhood = merge_geom(
+#   c('Noe Valley', 'Glen Park'),
+#   'Noe Valley \\\nGlen Park'
+#   )
+
+
+remove_nhood = c(
+  'Lincoln Park', 'Treasure Island', 'Russian Hill', 'Japantown',
+  'Lakeshore', 'Excelsior', 'West of Twin Peaks', 'Visitacion Valley',
+  'Golden Gate Park', 'Lone Mountain', 'Inner Sunset', 'Seacliff', 
+  'Nob Hill', 'Pacific Heights', 'Presidio Heights', 'Mission Bay',
+  'Twin Peaks', 'Chinatown', 'McLaren Park', 'Outer Mission', 'Oceanview',
+  'Presidio', 'Marina', 'Portrero Hill', 'Bernal Heights', 'Noe Valley \\\nGlen Park',
+  'Noe Valley', 'Glen Park', 'Haight Ashbury', 'Castro'
+  )
+
+sf.nhood = sf.nhood %>%
+  filter(!(nhood %in% remove_nhood))
+
+sf.nhood$rank = 3
+
+rank1 = c('Downtown', 'Mission')
+sf.nhood[sf.nhood$nhood %in% rank1, 'rank'] = 1
+rank2 = c(
+  'Bayview', 'SOMA', 'Tenderloin', 'Hayes Valley',
+  'Sunset', 'Richmond'
+  )
+sf.nhood[sf.nhood$nhood %in% rank2, 'rank'] = 2
+
+sf.nhood$nhood = sf.nhood$nhood %>%
+  gsub(" ", "\n", ., fixed = TRUE)
+
+geom_nhood = function(
+  data = sf.nhood,
+  ranks = c(1,2,3),
+  focus = c(),
+  size=3
+  ){
+  geom_text_sf(
+    sf_to_labels(
+      data %>%
+        filter((rank %in% c(ranks))|(nhood %in% focus)),'nhood'),
+    size = size)
+}
+
+geom_quad = function(
+  data = sf.quad,
+  size=5, ...
+  ){
+  geom_text_sf(
+    sf_to_labels(
+      data, 'quad'),
+    size = size, ...)
+}
+
+plot_limits = function(
+  data = sf.quad,
+  # buffer between plot's limits and the geometry 
+  # (in unit of geometry column)
+  buffer = 0
+){
+  # creates bounding box
+  poly.bbox =
+    data %>% st_union() %>%
+    # buffers the geometry so the ultimate plot has margins
+    st_buffer(buffer) %>%
+    st_bbox()
+  return(
+    # returns the 'coord_sf' function which you can add to any plot
+    coord_sf(
+      xlim = c(poly.bbox['xmin'], poly.bbox['xmax']),
+      ylim = c(poly.bbox['ymin'], poly.bbox['ymax']),
+      crs = st_crs(data)
+  ))}
+
+
+ggplot() +
+  #geom_sf(data=sf.nhood, aes(fill=rank)) + 
+  #geom_bound() +
+  geom_quad() + 
+  geom_nhood(ranks=c(1,2, 3)) +
+  plotTheme()
+
+```
+
+### BART
+
+```{r 1A1_transit_import, warning = FALSE, message = FALSE}
+
+DATA_DIR = 'C:/Users/nelms/Documents/Penn/2021 Fall/MUSA-508/Files'
+
+#stop_path = "https://services3.arcgis.com/i2dkYWmb4wHvYPda/arcgis/rest/services/transitstops_existing_planned_2021/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=2227&f=geojson"
+stop_path = paste0(DATA_DIR, '/SF-Bay_Transit-Stops-Major_2021.geojson')
+
+#route_path = "https://services3.arcgis.com/i2dkYWmb4wHvYPda/arcgis/rest/services/transitroutes_01_2020/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=2227&f=geojson"
+route_path = paste0(DATA_DIR, '/BART_routes.geojson')
+
+BART.stops =
+  # from the MTC API, who sourced it from BART
+  st_read(stop_path) %>%
+  # only look at BART & weekday routes
+  filter(agency_id == "BA", route_s_nm!="Blue-Sun", route_s_nm!='Beige') %>%
+  mutate(
+    route_s_nm = ifelse(
+      route_s_nm=="Blue-Wkd/Sat", "Blue", 
+      route_s_nm)
+  ) %>%
+  st_transform(., project_crs)
+
+# Projection is (NAD83) California State Plan, Zone 2 (in FEET)
+# EPSG:2226
+CA_crs = st_crs(project_crs)
+#cat(CA_crs$input, ', EPSG:', CA_crs$epsg)
+
+BART.routes = 
+  st_read(route_path) %>%
+  filter(agency_id == "BA", route_s_nm!="Blue-Sun") %>%
+  mutate(
+    route_s_nm = ifelse(
+      route_s_nm=="Blue-Wkd/Sat", "Blue", 
+      route_s_nm)
+  ) %>%
+  st_transform(., project_crs)
+
+# NARROW STOPS TO .5 MILE OUTSIDE THESE CITIES
+BART.stops =
+  BART.stops %>%
+  # .5 mile buffer + 1 foot
+  st_filter(., st_buffer(st_union(sf.data), dist=5280*.5+1)) %>%
+  group_by(stop_nm,stop_id) %>%
+  st_drop_geometry(.) %>%
+  summarise(
+    route_count = n_distinct(route_s_nm), # get routes used
+    routes      = list(unique(route_s_nm))
+  ) %>%
+  merge(., BART.stops[,'stop_id'], by='stop_id') %>%
+  distinct() %>% # remove duplicates
+  st_as_sf()
+
+# NARROW STOPS TO THESE CITIES 
+BART.routes = st_intersection(BART.routes, st_buffer(st_union(sf.data),5280*.5))
+
+```
+
+```{r 1A2_Buffers}
+
+buffer_distance = .5
+
+min_point_distances = function(
+  input.geoms,
+  input.ids,
+  compare.geoms,
+  compare.ids
+){
+  # GET DISTANCES OF TRANSIT STOPS AND THE FOCUS AREA BOUNDARY
+  distances_matrix = 
+    outer(input.geoms,
+          compare.geoms,
+          FUN=Vectorize(st_distance, USE.NAMES = FALSE))
+  
+  # CREATE MATRIX COLUMN & ROW NAMES
+  rownames(distances_matrix) = input.ids
+  colnames(distances_matrix) = compare.ids
+  
+  get_col = function(rowname, find_num){
+    return(colnames(distances_matrix)[distances_matrix[rowname, ] == find_num])
+  }
+  get_col = Vectorize(get_col)
+  distances_df =
+    apply(distances_matrix, 1, min) %>% as.data.frame() %>%
+    rename('distance'=1) %>%
+    rownames_to_column('ID') %>%
+    mutate(closest=get_col(ID, distance))
+  
+  return(distances_df)
+}
+
+sf.coords = sf.data %>% 
+    st_convex_hull() %>% 
+    st_cast(., "MULTIPOINT") %>%
+    st_union() %>%
+    st_cast(., "POINT")
+
+BARTstop_EBboundary_distances = min_point_distances(
+  input.geoms = sf.coords,
+  input.ids   = seq(from=1,to=length(sf.coords)),
+  compare.geoms = BART.stops$geometry,
+  compare.ids = BART.stops$stop_id
+)
+  
+# GET LARGEST CLOSEST DISTANCE (MILES) BETWEEN STOPS AND BOUNDARY
+max_min_BART_SF_dist = 
+  max(BARTstop_EBboundary_distances$distance)/mile
+
+# MINIMUM DISTANCE NEEDED TO BUFFER FROM TRANSIT STOPS AND COVER ALL FOCUS AREAS
+# ASSUMES IN 1/2 or 1 MILE INTERVALS
+buffer_max_distance = ceiling(max_min_BART_SF_dist)
+
+# FUNCTION CREATING MULTIPLE RING BUFFERS FOR TRANSIT STOPS
+# CYCLES THROUGH EACH DISTANCE ROW TO BUFFER & UNION
+multiringbuffers_byrow = function(
+  input.points, # BART Stops or any point
+  buffer_distance=.5,
+  buffer_max=5,
+  # default fields & info for union
+  union_default = data.frame(
+    stop_id=c('ALL'),stop_nm=c('UNION'),
+    route_count=c(0),routes=c(''))
+){
+  mile=5280
+  # SEQUENCE VECTOR OF BUFFER RING LENGTHS
+  buffer_distances = 
+    seq(from=buffer_distance, 
+        to=buffer_max, by=buffer_distance)
+  
+  # CYCLE THROUGH DISTANCES TO BUFFER EACH POINT
+  # USE ST_DIFFERENCE TO CREATE RINGS
+  # CREATE UNION ROW OF EACH DISTANCE
+  for (current_buffer_distance in buffer_distances) {
+    # GEOM OF SMALLER DISTANCE TO CREATE RING
+    buffer.difference = 
+      input.points %>% 
+        st_buffer(
+          (current_buffer_distance-buffer_distance)*mile
+          ) %>% st_union() %>% st_sfc()
+    # SF BUFFER OF EACH STOP
+    buffer.new = 
+      input.points %>%
+      st_buffer(., current_buffer_distance*mile) %>%
+        st_difference(., buffer.difference) %>%
+      mutate(distance = current_buffer_distance)
+    
+    # SF BUFFER UNION FOR NEW ROW 
+    buffer.union = 
+      buffer.new %>%
+        st_union() %>%
+        st_difference(., buffer.difference) %>%
+        st_sfc() %>%
+      # cbind default union fields
+      cbind(
+        ., union_default %>%
+          mutate(distance=current_buffer_distance)
+        ) %>% st_as_sf() %>% 
+      # reorder columns for rbind
+      subset(., select=colnames(buffer.new))
+    
+    # rbind to all buffers
+    if (current_buffer_distance==buffer_distance) {
+      buffer.temp = 
+        st_as_sf(rbind(
+          buffer.union, 
+          buffer.new))} 
+    else 
+      buffer.temp = 
+      st_as_sf(rbind(
+        buffer.temp, 
+        buffer.union, 
+        buffer.new))
+  }
+  # reset index
+  row.names(buffer.temp) <- NULL
+  return(buffer.temp)
+}
+
+buffer_distance = .5
+BART.buffers = 
+  multiringbuffers_byrow(
+    BART.stops, buffer_distance=buffer_distance,
+    buffer_max=buffer_max_distance)
+
+buffer_distances = 
+  seq(from=buffer_distance, to=buffer_max_distance, by=buffer_distance)
+
+buffer_breaks = c(0,buffer_distances)
+buffer_labels =
+  c(gsub("0.", ".", buffer_breaks))
+#buffer_breaks = c(buffer_distances,buffer_max_distance+buffer_distance)
+
+```
+```{r centroid}
+
+# GET CENTROIDS IN EAST BAY
+tracts.all.centroid =
+  sf.data[c('geoid10','geometry')] %>%
+  # centroid with largest poly to avoid water in city shapes
+  st_centroid(sf.data, of_largest_polygon = TRUE)
+
+
+min_BART_dist_find = function(tract.pt){
+  dists_bart = sapply(
+    BART.stops$geometry, function(BART_pt) 
+    st_distance(BART_pt, tract.pt))
+  return(min(dists_bart))
+}
+
+tract_bart_distances = min_point_distances(
+  tracts.all.centroid$geometry, tracts.all.centroid$geoid10,
+  BART.stops$geometry, BART.stops$stop_id) %>%
+  rename(geoid10=ID, dist_BART=distance, closest_BART=closest)
+
+tracts.all.centroid = 
+  tracts.all.centroid %>%
+  merge(
+    ., 
+    tract_bart_distances,
+    by='geoid10', all.x = TRUE
+  )
+
+# CALCULATE NEW COLUMNS BY WEIGHTING & LQ
+sf.data =
+  sf.data %>%
+  merge(
+    ., 
+    tracts.all.centroid %>% as.data.frame() %>% 
+      select(geoid10, dist_BART, closest_BART) %>%
+      rename(dist_BART.tot.2020 =dist_BART) %>%
+      distinct(.),
+    by='geoid10', all.x = TRUE)
+  
+
+```
+
+
+## Managing Data
+
+Before setting our data sets off for exploration and modelling, we will organize our variables, remove outliers, and selecting which houses to predict for.
+
+
+Looking at the filters, we are only removing around 174 housing sales observations out of the total 11,264 (1.5 %). 
+
+### Predicting Dataset
+
+I also remove non-residential (or very low) block groups from the predicting dataset. My eventual predictions will be skewed if I leave in areas that cannot receive building permits.
+
+
+``` {r vars_partition}
+
+vars = colnames(sf.data)
+
+
+vars.admin = c('geoid10', 'geometry')
+
+var.dv = "units.tot.15_19"
+
+var.ivs.all = vars[!(vars %in% c(var.dv, vars.admin, 'closest_BART', 'dist_BART_miles'))]
+
+non_res_geoid10 = c(
+    '06075060100', #presidio
+    '06075980300', # golden gate park
+    '06075980200', # land's end
+    '06075060400', # Mercer Park
+    '06075980501' # McLaren
+)
+
+sf.predict = 
+  sf.data %>%
+    filter(!geoid10 %in% non_res_geoid10) %>%
+    mutate_all(~replace(., is.na(.), 0))
+sf.predict = 
+  sf.data %>%
+    filter(!geoid10 %in% non_res_geoid10) %>%
+    mutate_all(~replace(., is.na(.), 0)) %>% 
+   filter(permits.tot.15_19<140)
+
+```
+
+
