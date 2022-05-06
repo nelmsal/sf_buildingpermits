@@ -41,28 +41,30 @@ options(scipen = 999)
 #{.tabset}
 ```
 
-This project aims to better understand (1) where new units are being permitted in the City of San Francisco, and (2) determine if those new permits or units relate to demographic changes.  
+This project aims to better understand (1) where new units are being permitted in the City of San Francisco, and (2) evaluate if those new permits or units are related to negative demographic, economic, or cultural changes.  
 
-This project's model aims to (A) *accurately* predict the prices of homes while (B) remaining *general* enough to predict the home values outside of the Boulder County training dataset & context. 
+This report will be split into six sections:
+1. **Introduction** – *Context, Literature Review, Methods*
+2. **Data Collection** – *Permits API Pull, Data Sources*
+3. **Exploratory Data Analysis** – *Distributions, Correlation, Variable Selection*
+4. **Spatial Analysis** – *Spatial Autocorrelation, Local Moran's I, Cluster Analysis*
+5. **Linear Model** – *Ordinary Least Squares, Predicting 2015-19 Permits & Units*
+6. **Conclusions** – *Gentrification?*
 
-The process of forming this predictive model starts with:
+This project can explore many narratives involving permits, housing, and gentrification. But for this version, I will focus on understanding **Permits and Housing Units from 2015 to 2019**. This is an interesting period to study as the city will have already had waves of incoming investment and high-income workers from the booming technology industry. So Sections 3-5 will focus on understanding:
+* Where is housing being permitting the most?
+* Is there a changing demographic in those areas of higher development?
 
-1. **Wrangling Data** that can describe both the interior & exterior factors of the houses while being obtainable for other geographies; then
+-------------------------------
 
-2. **Exploring that Data** to select the most predictive & independent variables; before,
-
-3. **Estimating a Linear Model** off of a test dataset & validating the model with a larger dataset; and finally,
-
-4. **Spatially** estimating the linear model & incorporating a geographic analysis. 
+# Introduction
 
 ```{r child = '00-intro.Rmd'}
 ```
 
-Our linear model only used 13 selected variables that addressed the basic interior and exterior values of a home. Our predicted prices, as a result, averaged a difference of \$ 231,276 with the observed Boulder County 2019-21 prices (Mean Absolute Error). Those errors were, on average, 33.8 % (Mean Absolute Percentage Error). Considering the average observation cost \$ 749,112, our predictions ultimately aren't accurate enough to display on Zillow. 
-
 -------------------------------
 
-# Data Wrangling
+# Data Collection
 
 ```{r child = '01-data.Rmd'}
 ```
@@ -76,17 +78,17 @@ Our linear model only used 13 selected variables that addressed the basic interi
 
 -------------------------------
 
-# Linear Model Results
+# Spatial Analysis
 
-```{r child = '03-results.Rmd'}
+```{r child = '03-spatialEDA.Rmd'}
 ```
-
 ----------------------------------
 
-# Spatial Model Results
+# Linear Model Results
 
-```{r child = '04-spatial.Rmd'}
+```{r child = '04-results.Rmd'}
 ```
+
 ----------------------------------
 
 # Conclusion

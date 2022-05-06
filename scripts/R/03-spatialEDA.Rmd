@@ -420,6 +420,19 @@ Figure 2.5 provides a time series of housing clusters. Mostly suggesting that ne
 
 The Mission is qualitatively been deemed the 'battleground of gentrification' in the last decade as it is a powder keg of displacement: low-income, immigrants, large supply of rental housing, nearby BART, and just outside the major employment centers of SOMA, Mission Bay, & Downtown.
 
+```{r unts}
+web_crs = 'EPSG:4326'
+
+hot_json_path = "C:/Users/nelms/Documents/Penn/MUSA-611/sf-building-permits-web-map/data/sf_units_hotspots.geojson"
+
+sf.units.hotspots %>%
+  filter(units1519.hotspots==1) %>%
+  st_union() %>% 
+  st_transform(crs = web_crs) %>%
+  st_write(hot_json_path)
+
+```
+
 
 ```{r LISA_permits_decade, fig.width=8, fig.height=6}
 
@@ -438,13 +451,46 @@ plot_localmorans_hotspot(
 To better understand this 'powder keg', lets compare the demographics inside and outside of these clusters.
 
 
-
 ```{r setup_clustcomp}
 
 sf.predict$permits1519.hotspots = 
   sf.permits.hotspots$permits1519.hotspots
 sf.predict$units1519.hotspots = 
   sf.units.hotspots$units1519.hotspots
+
+focus.col = 'units1519.hotspots'
+sf.predict$focus.col = sf.predict$units1519.hotspots
+
+focus.vars = c(
+  'poc_linc.pct.10_15',
+  'wht.pct.10_15',
+  'college.pct.18',
+  'mov.pct.18',
+  'occ_own_ch.pct.00_18',
+  'bsqft_res.pct.2019',
+  'permits.tot.15_19',
+  'evictions.tot.00_19',
+  'occ_own.tot.18'
+)
+
+sf.predict %>%
+    st_drop_geometry() %>%
+    select(c(focus.col, rev(focus.vars))) %>%
+    gather(Variable, value, -focus.col) %>%
+  ggplot(aes(focus.col, value, fill=focus.col)) + 
+    geom_bar(
+      position = "dodge", 
+      stat = "summary", fun.y = "count"
+      ) + 
+    facet_wrap(~Variable, scales = "free") +
+    #scale_fill_manual(values = palette2) +
+    labs(
+      x="Took the Housing Credit", 
+      y="Value", 
+      title = title
+      #subtitle = "(continous outcomes)"
+      ) +
+    theme(legend.position = "none")
 
 ```
 

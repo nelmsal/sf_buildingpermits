@@ -330,7 +330,7 @@ ggcorr_full = function(focus_df, #focus_vars= vars,
   }
 ```
 
-``` {r plot_corr, fig.width=8, fig.height=8}
+``` {r plot_corr, fig.width=6, fig.height=6}
 
 
 remove_col = c(
@@ -365,7 +365,11 @@ remove_col = c(
   'pop.tot.00',
   'hh_inc.med.00',
   'occ_rent_ch.pct.90_18',
-'occ_own_ch.pct.90_18'
+  'occ_own_ch.pct.90_18',
+  'occ_rent.tot.18',
+  'occ_rent_ch.pct.00_18',
+  'lowinc.pct.00',
+  'area_res.pct.2019'
   )
 
 vars.ivs.cont_fin = vars.ivs.cont[!(vars.ivs.cont %in% remove_col)]
@@ -384,9 +388,13 @@ var.dvs.plot = c(
 
 for (start in c(1,len_half)){
   end = start+len_half
+  
+  focus.cols = vars.ivs.cont_fin[start:end]
+  focus.cols = focus.vars[sapply(focus.vars, function(item) item %in% colnames(sf.predict))]
+  
   sf.cont = 
     sf.predict %>%
-    select(c(var.dvs.plot, vars.ivs.cont_fin[start:end])) %>% 
+    select(c(var.dvs.plot, focus.cols)) %>% 
     st_drop_geometry(.)
   
   plot = ggcorr_full(sf.cont,

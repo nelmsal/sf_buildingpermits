@@ -1,4 +1,21 @@
 
+  San Francisco and the larger Bay Area region is becoming unlivable for most of its long-term lower- *and* middle-class residents. Although many American cities have unaffordable housing markets, the Bay Area's primarily due to the lack of building enough housing. It isn’t that cities don’t have enough land, the issue is simply that the cities’ zoning regulations, politicians, and citizens have restricted the ability to receive building permits. The result is the haunting, ambiguous effects of ‘gentrification’.
+
+  This project seeks to locate where housing units are actually being permitted and if those buildings are relieving the lack of housing, cost of living, and gentrification indicators. To understand if the building permits are pushing the Bay Area into a deeper stage of gentrification, the project will follow these steps:
+
+**Step 1. Gather Permits** – Analyze 2000-2019 building permits for the city of San Francisco – focusing on their neighborhood location, amount of housing units, amount of affordable units, and legal status
+*(see Section 1 or [my notebook file that compiles the data]())*
+
+**Step 2. Analyze Changes** – Determine which neighborhoods receive the most permits and if those same neighborhoods also have:
+*	Housing Market Increases – via Home Prices, Rental Costs, Evictions
+*	Changing Demographics – via Race, Income, Age, Employment, Education
+*	Historically Adverse Policies – Exclusionary Zoning, Racial Discrimination
+*(see Section 2 & 3)*
+
+**Step 3. Compare Gentrification** – Qualitatively & Quantitatively compare permitting, housing, and demographics between neighborhoods
+
+In report's conclusionIt will be difficult to directly link building permits to housing costs, but the report will end by estimating the observed permit metrics’ effects on the crisis as a whole.
+
 ```{r import_libraries, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -33,6 +50,8 @@ library(rgdal)
 library(spdep)
 library(grid)
 library(viridis)
+
+
 
 ```
 
