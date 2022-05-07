@@ -1,5 +1,5 @@
 
-```{r vars_setup}
+```{r vars_setup, include=FALSE}
 
 DIR = "C:/Users/nelms/Documents/Penn/CPLN-680/Permit_Metrics"
 setwd(DIR)
@@ -9,17 +9,40 @@ project_crs = st_crs('EPSG:7132')
 
 ```
 
+  In this section, I will be importing in the dataset containing permits, housing units, and predicting data. This data was aggregated into Block Groups in a separate Python Jupyter Notebook *([which can be found here](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/scripts/python/sf_buildingpermit_import.ipynb))*. The Notebook provides more in-depth metadata and references to the data sources. Nonetheless, I will reference the sources of the data below. 
+  
+Overall, the Block Group has 7 larger categories:
+1. Building Permits (2000-19)
+2. Added Housing (2000-19)
+3. Evictions (2000-19)
+4. Demographic Metrics (1990-2018)
+5. Economic Metrics (1990-2018)
+6. Built Environment (2022)
+7. Land Use (2022)
+
+I want to bring in alot of metrics for the initial analysis. But by the linear model, I will pair down to the most impactful & relevant metrics.
+
 ## Permits by Block Group
 
-```{r vars_}
+  I initially was scraping the city's *Accela Permit Database API* for permits. Although this method gave me access to more information on permits from 2014-2019, I decided that it would be more valuable to focus on quantity rather than quality.
+
+  As a result, I found a pre-cleaned permit dataset from the SF Open Data Portal for ([2000-2013](https://data.sfgov.org/Housing-and-Buildings/Building-Permits-before-January-1-2013/) and [2013-2019](https://data.sfgov.org/Housing-and-Buildings/Building-Permits-on-or-after-January-1-2013/)). Although there is less information on the permit's processing (e.g. permitting length), it provides me with an accurate history of development for 20 years.  The full list of permit fields can be found in [this spreadsheet](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/data/meta/sf_building_permit_fields.xlsx).
+
+```{r vars_permits}
 
 # data pre-cleaned in python
 data_path =
-   paste(DIR, "/data/clean/sf_dataset_20220414.geojson", sep="")
+   paste(DIR, "/data/clean/sf_dataset_20220506.geojson", sep="")
 sf.data =
   st_read(data_path) %>%
   st_transform(project_crs)
 
+```
+
+
+
+```{r permit_visual echo=FALSE, out.width='100%'}
+knitr::include_graphics('./cropped-banner_efpt.jpg')
 ```
 
 ### Feature

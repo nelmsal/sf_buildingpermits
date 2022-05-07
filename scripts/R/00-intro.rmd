@@ -10,11 +10,83 @@
 *	Housing Market Increases – via Home Prices, Rental Costs, Evictions
 *	Changing Demographics – via Race, Income, Age, Employment, Education
 *	Historically Adverse Policies – Exclusionary Zoning, Racial Discrimination
-*(see Section 2 & 3)*
+*(see Sections 2 & 3)*
 
-**Step 3. Compare Gentrification** – Qualitatively & Quantitatively compare permitting, housing, and demographics between neighborhoods
+**Step 3. Conclude on Housing Affects** – Qualitatively & Quantitatively compare permitting, housing, and demographics between neighborhoods
 
-In report's conclusionIt will be difficult to directly link building permits to housing costs, but the report will end by estimating the observed permit metrics’ effects on the crisis as a whole.
+In report's conclusion It will be difficult to directly link building permits to housing costs, but the report will end by estimating the observed permit metrics’ effects on the crisis as a whole.
+
+-------------------------------
+
+## Literature Review
+
+  The San Francisco Bay Area is having a housing crisis and it has for a while. The core of the crisis is relatively simple. The Bay Area’s housing supply is not meeting housing demand – and it hasn’t since the 1960s. 
+  
+  The result of this imbalance is that the Bay Area has become the most expensive area of the United States to live. Since 1990, Bay Area counties have been at the top of the United States’ Housing Price Index counties – with at least 7 counties being in the top 10 every year (Bogin, Doerner, and Larson 2019). San Francisco, which has sat at the top of the Housing Price Index, had its housing price increase by 39% from 2010 to 2020 but only had a 7% increase in housing units (US Census Bureau 2020).
+  
+  Once we start to look into, Why the Bay Area can’t build more housing? or What are the larger economic, social, and political effects?, is when this housing crisis becomes an even deeper, complicated state of gentrification, inequality, and exclusion. To understand the cause and effects of this crisis, we have to lay down the theory & studies explaining the:
+1. housing economy of the bay, 
+2. Theoretical Stages of Gentrification
+3. Measuring Stages of Gentrification, and 
+4. Local Governance & Permitting Process.
+  
+### Strict Regulations & the Housing Economy
+
+  Housing demand doesn’t necessarily obey borders. If a newly hired tech worker wants to move to the San Francisco Bay Area, they will use Craigslist to find an apartment within 10 miles of their job. If a developer wants to build a multi-family house, they are at the mercy of the city government’s layers of anti-growth land use policies and public hearing bodies. 
+  
+  One of the larger models at play is the ‘filter model’. The housing market has new and/or high quality homes that sit the top of the market for high income people. As the homes lower in quality, more middle income people can afford the middle quality homes. At the bottom is the lowest quality housing that the lowest incomes can afford. Sometimes homes can be repaired or demolished & re-constructed to raise their quality or the amount of units in the market (O’Sullivan 2012).  
+  
+  With a limited availability of rental housing, the amount of homelessness has been observed to rise (Hanratty 2017). Glaesar & Gyourko, in The Economic Implications of Housing Supply, observe that stricter land use regulations come at the expense of less construction, higher home prices, and less population growth – calling out the Bay Area specifically in their study(Glaeser and Gyourko 2002).
+
+### Theoretical Stages of Gentrification
+
+  For this project, I will start with Ruth Glass' definition of gentrification, “The transformation of a poor neighborhood in cities by the process of middle- and upper-income groups buying properties in such neighborhoods and upgrading them.” (Lees et al., 2008) It mostly reads as general displacement.
+  
+  To add temporal levels to that definition, let's look at Clay's 1979 Stage Model (Clay 1979). This model provides a narrative by matching stages with the actors at fault: 
+1. **Pioneers**: Small group of Risk Oblivious Pioneers:  Artists, Designers, LGBTQ
+2. **Expanding Gentrification**: Risk Takers, & remodelers move in, start renovating buildings.  
+3. **Displacement**: middle class people start moving into neighborhood. Major changes start happening
+4. **Mature Gentrification**: neighborhood becomes desirable, often with new resources and businesses.  Often the original residents and early gentrifiers are displaced. 
+
+Clay's model will be more difficult to measure but adds more details to the definition. The model claims that gentrification is more of a gradient from lower-income native residents up to higher-income transplants.
+
+### Measuring States of Gentrification
+
+  The housing crisis & the larger ‘gentrification’ have largely remained ongoing and un-addressed as this the full problem is too immense and complicated for one local government to take responsibility, measure, and absolve. Japonica Brown-Saracino, in “Explicating Divided Approaches to Gentrification & Growing Income Inequality”, emphasizes that gentrification is typically qualitatively viewed as a:
+
+> nearly unstoppable force bearing down on cities that exacerbates economic and racial inequalities     and plays a prominent role in the spatial reorganization of urban life. (Brown-Saracino 2017, 516)
+
+  But how can you quantitively define or measure ‘gentrification’? Brown-Saracino and other gentrification researchers highlight that it is more difficult to quantifiably measure all of the root causes and direct/in-direct effects of gentrification(Desmond and Perkins 2016; Humphries et al. 2019).  Let alone forming a policy solution to address the quantified measurements. 
+  
+  Mahasin Mujahid et al. (2019) were able to compare the measurement of, "Gentrification and Displacement in the San Francisco Bay Area". Mujahid et al. specifically looked at 3 methods of measuring gentrification: the Freeman method, the Landis method, and the Urban Displacement Project's method. I believe it is import to go through each of these methods to think about the project's focus:
+
+Freeman's Method for Defining a Gentrifying Area:
+1. the area was at or below the median income for its respective metropolitan area
+2. the percentage of housing stock within the area built in the prior twenty years was at or below the median for the metropolitan area, 
+3. at least 50% of the area was defined as urban. (Freeman 2005)
+
+Landis' Method for Defining a Gentrifying Area:
+1. 1990 median household income was in the lowest four deciles and their 2013 median household income had improved by two or more deciles (Landis 2016)
+
+Urban Displacement Project's Method of Defining Stages of Gentrification:
+1. Rental & Housing costs received a rapid increase from 1990 to 2000 or 2000 to 2018
+2. Rapid increase in income. (Thomas el al. 2020)
+*(It's a more nuanced method that is difficult to put into a few bullet points)*
+
+  All three methods mostly revolve around dramatic increases of income and housing costs in a large time period. The Urban Displacement Project used more classifications, as well as much more metrics to compare with. With these three methodologies in mind, it provides a better lens to analyze the housing, permit, and demographic data. 
+
+### Local Governance & Permitting Process
+  
+  The issue isn’t the lack of development interest or developable area. The under-supplied housing is the result of exclusionary local regulations and the difficulty of finding & forming policy that will prevent negative effects. In the Bay Area, and many other U.S. cities, the permitting process is long and expensive with many opportunities for public hearing bodies to pressure public representatives to deny projects. Besides affecting housing supply and costs, the local regulations have indirectly or directly resulted in racial discrimination, rising homelessness, and increased economic inequality.
+  
+  Building Construction Permits can be notoriously difficult to receive – with many cities having systematic methods of slowing down the process. The public hearing bodies, that are supposed to provide transparency to the process, now are points where NIMBY (Not in My Backyard) residents can publicly pressure officials to legally or illegally halt the projects. The San Francisco Bay area is known for its housing crisis and difficult permitting processes.
+  
+  There is existing research that analyzes the overall American building permitting process and how it contributes to the housing economy. Overall, the local government’s permitting process is purposely difficult to navigate as a result of public hearing bodies – specifically Berkeley, CA (Dougherty 2017) & San Francisco (McNee & Pojani 2021; Egan, n.d.) – and/or land use regulations (Glaeser & Gyourko 2002). Literature evaluate how public hearing bodies favor older, wealthier, and white communities.(Schaffner, Rhodes, & Raja 2020; Trounstine 2018) Some quantitative studies reinforce this claim with users surveys(Einstein 2021) and meeting minutes (Einstein, Palmer, & Glick 2019). 
+
+### Conclusion
+
+  The literature pushes the next data-focused sections to evaluate how income, housing costs, and demographics have changed over time. I will attempt to measure these changes to changes in new permits. But it might be difficult to come to a strong conclusion.
+  
 
 ```{r import_libraries, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

@@ -35,7 +35,7 @@ knitr::opts_chunk$set(
   )
 options(tigris_class = "sf")
 options(scipen = 999)
-# rmarkdown::render('index.Rmd', output_file='MUSA508_HW2_NELMS-Mangiapane.html')
+# rmarkdown::render('index.Rmd', output_file='Nelms_SFPermitMetrics_Report-Mangiapane.html')
 # bookdown::render_book('index.Rmd', 'bookdown::gitbook')
 
 #{.tabset}
