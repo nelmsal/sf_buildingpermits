@@ -12,8 +12,8 @@
 | Mar 25 | **Peer Review** - Hanyu Gao | [*doc*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/811edbd7870a022d6faa57cec041a0fcf01fd390/deliverables/Nelms%20-%20Midpoint%20Peer%20Review%20-%20Hanyu%20Gao.docx) |
 | Mar 25 | **Peer Review** - Hanpu Yao | [*doc*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/811edbd7870a022d6faa57cec041a0fcf01fd390/deliverables/Nelms%20-%20Midpoint%20Peer%20Review%20-%20Hanpu%20Yao.docx) |
 |*Final Report*|
-| Apr 29 | **Final Report** | [*html*]() |
-| Apr 29 | Extra: **Permit Pull** | [*ipynb*]() |
+| Apr 29 | **Final Report** | [*html*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/deliverables/PermitMetrics_FinalReport.html) |
+| Apr 29 | Extra: **Data Cleaning Report** | [*ipynb*](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/scripts/python/sf_buildingpermit_import.ipynb) |
 | Apr 29 | Extra: **Permit Web Map** | [*repository*](https://github.com/nelmsal/sf-building-permits-web-map) |
 
 ## Question
