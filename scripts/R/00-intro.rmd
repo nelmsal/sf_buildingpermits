@@ -4,7 +4,7 @@
   This project seeks to locate where housing units are actually being permitted and if those buildings are relieving the lack of housing, cost of living, and gentrification indicators. To understand if the building permits are pushing the Bay Area into a deeper stage of gentrification, the project will follow these steps:
 
 **Step 1. Gather Permits** – Analyze 2000-2019 building permits for the city of San Francisco – focusing on their neighborhood location, amount of housing units, amount of affordable units, and legal status
-*(see Section 1 or [my notebook file that compiles the data]())*
+*(see Section 1 or [my notebook file that compiles the data](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/scripts/python/sf_buildingpermit_import.ipynb))*
 
 **Step 2. Analyze Changes** – Determine which neighborhoods receive the most permits and if those same neighborhoods also have:
 *	Housing Market Increases – via Home Prices, Rental Costs, Evictions

@@ -374,7 +374,7 @@ plot_localmorans_hotspot = function(
 Figure 2.2 shows the process of finding clusters of high Permit Counts for 2015 to 2019. The first plot shows simple counts of permits, with Downtown/SOMA (NE), Bayview (SE), and general eastern portion of San Francisco see the highest permits. The Local Moran's I highlights that those block group's values are spatially correlated. The P-Value map provides a measure of that significance. Notice the higher permit count clusters are purple but the low counts are green. The final significant cluster map isolates the significantly highest clusters of Downtown and Portola/Bayview areas. 
 
 
-```{r LISA_permits, fig.width=8, fig.height=6}
+```{r LISA_permits_fig, fig.width=8, fig.height=6}
 
 fig_num = 2.2
 fig_title = glue("Figure {fig_num}: Local Indicators of Spatial Autocorrelation, Permits 15-19")
@@ -420,21 +420,24 @@ Figure 2.5 provides a time series of housing clusters. Mostly suggesting that ne
 
 The Mission is qualitatively been deemed the 'battleground of gentrification' in the last decade as it is a powder keg of displacement: low-income, immigrants, large supply of rental housing, nearby BART, and just outside the major employment centers of SOMA, Mission Bay, & Downtown.
 
-```{r unts}
+```{r unts, include=FALSE}
 web_crs = 'EPSG:4326'
 
 hot_json_path = "C:/Users/nelms/Documents/Penn/MUSA-611/sf-building-permits-web-map/data/sf_units_hotspots.geojson"
 
-sf.units.hotspots %>%
-  filter(units1519.hotspots==1) %>%
-  st_union() %>% 
-  st_transform(crs = web_crs) %>%
-  st_write(hot_json_path)
+# sf.units.hotspots %>%
+#   filter(units1519.hotspots==1) %>%
+#   st_union() %>% 
+#   st_transform(crs = web_crs) %>%
+#   st_write(hot_json_path)
 
 ```
 
+Figure 2.5 highlights how the cluster of new housing units has changed over time. If we remember from the original housing unit maps in Section 2, the new housing units were spread throughout the city. These cluster maps show that the core cluster is getting larger. The there is a grown inequality of areas that add units in the city. Outside of the downtown area, there is less housing added.
 
-```{r LISA_permits_decade, fig.width=8, fig.height=6}
+What is concerning is that even more units are being added to the Tenderloin and Mission districts. The two highest concentrations of low-income renters in San Francisco. Sections 2 & 3 informed us that there is a decrease in bother renters and low-income people in the downtown areas. So the new housing units might be displacing the remaining residents in favor of owner-occupied condos, rather than relieving the shortage of rental units. 
+
+```{r LISA_units_decade, fig.width=8, fig.height=6}
 
 fig_num = 2.5
 fig_title = glue("Figure {fig_num}: Significant Clusters of Housing Unit Counts")
@@ -451,7 +454,7 @@ plot_localmorans_hotspot(
 To better understand this 'powder keg', lets compare the demographics inside and outside of these clusters.
 
 
-```{r setup_clustcomp}
+```{r setup_clustcomp, include=FALSE}
 
 sf.predict$permits1519.hotspots = 
   sf.permits.hotspots$permits1519.hotspots
@@ -485,16 +488,18 @@ sf.predict %>%
     facet_wrap(~Variable, scales = "free") +
     #scale_fill_manual(values = palette2) +
     labs(
-      x="Took the Housing Credit", 
+      x="Out or In the Housing Unit Cluster", 
       y="Value", 
-      title = title
+      title = "Comparing Values in or Out of the Housing Units Cluster"
       #subtitle = "(continous outcomes)"
       ) +
     theme(legend.position = "none")
 
 ```
 
-```{r setup_function}
+
+
+```{r setup_function, include=FALSE}
 
 
 get_corr_data = function(
@@ -666,7 +671,7 @@ There's alot to pull from **Table 2: difference between variables in and out of 
 
 This suggests there is a demographic change for areas with more permits. But as stated with the Moran's I, permits are more evenly dispersed so there isn't as much contrast inside and outside of the cluster.
 
-```{r clustcomp_units_mww}
+```{r clustcomp_permits_mww, results='asis'}
 
 var.dv = 'permits1519.hotspots'
 
@@ -788,7 +793,7 @@ Inside of the cluster, there is a different and changing demographic with:
 * but the change in percent white is increasing more inside the cluster
 * in 1990, there were more low income and people of color inside the cluster, rather than out. But 2018 saw a decrease in the share of both inside the cluster
 
-```{r clustcomp_units_mww}
+```{r clustcomp_units_mww, results='asis'}
 
 var.dv = 'units1519.hotspots'
 

@@ -1,0 +1,49 @@
+import_libraries	$	::	library	options
+import_functions	!	!=	$<-	%>%	&	.	::	[[	[<-	~	==	aes	as.numeric	c	ceiling	element_blank	element_line	element_rect	element_text	enquo	for	format	geom_text	geometry	group_by	gsub	if	label	lat	length	lon	map_dbl	mutate	paste	print	rep	return	round	seq	setNames	st_centroid	str_replace_all	str_split	str_sub	str_trim	theme	ungroup	unique
+binary_functions	%>%	&	.	<	==	>=	abs	as.character	as.numeric	format	if	ifelse	is.na	is.null	paste	return	round	str_remove	str_replace
+vars_setup	setwd	st_crs
+vars_permits	%>%	DIR	paste	project_crs	st_read	st_transform
+permit_visual	::	DIR	paste0
+units_visual_year	::	DIR	paste0
+visual_permit_house	::	DIR	paste0
+evict_rent_pct	::	DIR	paste0
+visual_rent_change	::	DIR	paste0
+visual_income	::	DIR	paste0
+visual_lowinc_poc	::	DIR	paste0
+visual_white	::	DIR	paste0
+visual_evict	::	DIR	paste0
+evict_visual_type	::	DIR	paste0
+vars_boundaries	!	$	$<-	%>%	.	[[	[<-	|	as.character	c	coord_sf	DIR	filter	geom_sf	geom_text_sf	grepl	gsub	linetype	mutate	nhood	paste	project_crs	quad	rank	rbind	return	sapply	select	sf_to_labels	st_bbox	st_buffer	st_crs	st_read	st_sf	st_transform	st_union	strsplit
+1A1_transit_import	!=	%>%	.	==	agency_id	distinct	filter	group_by	ifelse	list	merge	mutate	n_distinct	paste0	project_crs	route_s_nm	sf.data	st_as_sf	st_buffer	st_crs	st_drop_geometry	st_filter	st_intersection	st_read	st_transform	st_union	stop_id	stop_nm	summarise	unique
+1A2_Buffers	$	%>%	.	==	apply	as.data.frame	BART.stops	c	cbind	ceiling	colnames	colnames<-	data.frame	distance	for	gsub	ID	if	length	max	mile	min	mutate	outer	rbind	rename	return	row.names<-	rownames_to_column	rownames<-	seq	sf.data	st_as_sf	st_buffer	st_cast	st_convex_hull	st_difference	st_distance	st_sfc	st_union	subset	Vectorize
+centroid	$	%>%	.	as.data.frame	BART.stops	c	closest	closest_BART	dist_BART	distance	distinct	geoid10	ID	merge	min	min_point_distances	rename	return	sapply	select	st_centroid	st_distance
+vars_partition	!	%>%	~	<	c	colnames	filter	geoid10	mutate_all	permits.tot.15_19	sf.data
+plot_predict_scatplot	!	$	[[	aes	as.formula	c	F	geom_point	geom_smooth	ggplot	glue	grepl	labs	lm	max	min	paste	plotTheme	print	return	round	sf.predict	sort	tail	var.ivs.all	xlab	ylab
+scat_plot1	plot_scats
+scat_plot2	plot_scats
+scat_plot3	plot_scats
+scat_plot4	plot_scats
+corr_cont_pearson	!	$	$<-	%>%	[<-	aes	as.character	c	coord_fixed	cor	element_blank	element_text	geom_hline	geom_text	geom_tile	geom_vline	ggplot	gsub	labs	library	margin	melt	ncol	return	round	scale_fill_gradient2	sf.cont	theme	theme_minimal	unique	value	var.dv	Var1	Var2
+plot_corr	!	%>%	.	c	ggcorr_full	glue	length	print	round	select	sf.predict	st_drop_geometry	vars.ivs.cont	vars.ivs.disc
+pear_cont	!	%>%	.	c	ggcorr_full	glue	print	select	sf.predict	st_drop_geometry	var.dvs.plot	vars.ivs.cont_fin	vars.ivs.disc_fin
+spat_intro	%>%	.	as_Spatial	nb2listw	poly2nb	sf.predict
+global_morans_i	$	%>%	[[	aes	as.data.frame	c	do.call	geom_histogram	geom_vline	ggplot	glue	grid.arrange	labs	list	moran.mc	plotTheme	return	sf.predict	sf.predict.weights
+local_morans_i	!=	$	%>%	.	::	[[	[[<-	[<-	<	<=	==	>	aes	as.data.frame	brewer.pal	c	cbind	colnames	colnames<-	do.call	filter	for	gather	geom_bound	geom_quad	geom_sf	geometry	ggplot	grid.arrange	if	ifelse	Ii	length	list	localmoran	mapTheme	mutate	paste	Pr(z != E(Ii))	pvalue	return	sapply	scale_fill_gradientn	seq_along	sf.predict	sf.predict.weights	st_sf	unique	Value	Variable
+setup_comp	$	%>%	.	[[<-	==	aes	brewer.pal	c	cbind	do.call	filter	for	gather	geom_bound	geom_nhood	geom_sf	geometry	ggplot	grid.arrange	if	length	list	mapTheme	permits0004.hotspots	permits0509.hotspots	permits1014.hotspots	permits1519.hotspots	plot_limits	pval	rename_addprefix	scale_fill_gradientn	select	seq_along	sf.predict	sf.predict.weights	st_drop_geometry	st_local_morans	st_sf	st_union	unique	units0004.hotspots	units0509.hotspots	units1014.hotspots	units1519.hotspots	Value	Variable
+LISA_permits_fig	focus_sf.permits.localmorans	glue	plot_localmorans_all
+LISA_permits_decade	c	glue	plot_localmorans_hotspot	sf.permits.hotspots
+LISA_units	focus_sf.units.localmorans	glue	plot_localmorans_all
+unts	
+LISA_units_decade	glue	plot_localmorans_hotspot	sf.units.hotspots
+setup_clustcomp	$	$<-	%>%	~	aes	c	facet_wrap	gather	geom_bar	ggplot	labs	rev	select	sf.permits.hotspots	sf.units.hotspots	st_drop_geometry	theme	value	Variable
+setup_function	!=	$	%>%	.	==	as.data.frame	as.formula	c	cbind	chisq.test	colnames	colnames<-	cont_vars	data.frame	for	glue	if	paste	rbind	replace_na	return	round_thresh	row.names	row.names<-	set_names	sf.predict	sort_sub_sep	t	t.test	wilcox.test
+clustcomp_permits_mww	!	$	%>%	.	.data	::	[[	==	add_header_above	as.numeric	c	colnames<-	count_format	data.frame	df_corr_data	filter	for	glue	is.na	kable	kable_styling	mean	merge	mutate	MWW	pull	rbind	round	round_thresh	select	sf.predict	t.test	vars.ivs.cont_fin	vars.ivs.disc_fin
+clustcomp_units_mww	!	$	%>%	.	.data	::	[[	==	add_header_above	as.numeric	c	colnames<-	count_format	data.frame	df_corr_data	filter	for	glue	is.na	kable	kable_styling	mean	merge	mutate	MWW	pull	rbind	round	round_thresh	select	sf.predict	t.test	vars.ivs.cont_fin	vars.ivs.disc_fin
+setup_train_test_partition	!	%>%	.	c	createDataPartition	pull	remove_col	return	select	sf.predict	st_drop_geometry	units.tot.15_19	vars.admin	vars.ivs.cont_fin	vars.ivs.disc_fin
+setup_train_lm	%>%	.	as.formula	c	do.call	list	lm	paste	print	select_v	sf.train	var.ivs
+table_train_summ	%>%	>	abs	count_format	estimate	glue	ifelse	kable	kable_styling	lm.train	p.value	round_thresh	statistic	std.error	term	tidy	transmute
+table_train_err	%>%	add_header_above	adj.r.squared	c	df	df.residual	format_nums	glance	glue	kable	kable_styling	lm.train	p.value	r.squared	round_thresh	sigma	statistic	transmute
+setup_all_predict	%>%	.	^	<	==	abs	colnames	filter	ifelse	lm.train	mean	mutate	predict	rbind	sqrt	units.tot.15_19	units1519.abserror	units1519.ape	units1519.error	units1519.predict
+plot_train_lm	%>%	.	~	aes	c	data.frame	format	geom_line	geom_point	ggplot	glue	grid.arrange	labs	lm	mean	paste0	plotTheme	pull	round	sf.predict	summary	T	units.tot.15_19	units1519.abserror	units1519.ape	units1519.error	units1519.pe	x	y
+plot_all_predict_real	$	aes	geom_point	geom_smooth	ggplot	glue	labs	lm	max	min	plotTheme	sf.predict	units.tot.15_19	units1519.predict
+map_predictions	::	aes	geom_sf	ggplot	ggtitle	glue	grid.arrange	mapTheme	scale_fill_distiller	sf.predict	units1519.ape	units1519.error

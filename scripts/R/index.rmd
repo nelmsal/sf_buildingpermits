@@ -18,7 +18,7 @@ editor_options:
 ---
 
 
-```{r setup00, include=FALSE}
+```{r setup_knit, include=FALSE}
 library(bookdown)
 knitr::opts_chunk$set(
   echo=TRUE,
@@ -31,11 +31,11 @@ knitr::opts_chunk$set(
   cache=TRUE, 
   autodep=TRUE,
   results=FALSE,
-  root.dir = getwd()
+  root.dir = "C:/Users/nelms/Documents/Penn/CPLN-680/Permit_Metrics"
   )
 options(tigris_class = "sf")
 options(scipen = 999)
-# rmarkdown::render('index.Rmd', output_file='Nelms_SFPermitMetrics_Report-Mangiapane.html')
+# rmarkdown::render('index.Rmd', output_file='Nelms_SFPermitMetrics_Report.html')
 # bookdown::render_book('index.Rmd', 'bookdown::gitbook')
 
 #{.tabset}
@@ -44,16 +44,24 @@ options(scipen = 999)
 This project aims to better understand (1) where new units are being permitted in the City of San Francisco, and (2) evaluate if those new permits or units are related to negative demographic, economic, or cultural changes.  
 
 This report will be split into six sections:
+
 1. **Introduction** – *Context, Literature Review, Methods*
-2. **Data Collection** – *Permits API Pull, Data Sources*
+
+2. **Data Collection** – *Permits API Pull*, [(see python notebook for more data explanations)](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/scripts/python/sf_buildingpermit_import.ipynb)
+
 3. **Exploratory Data Analysis** – *Distributions, Correlation, Variable Selection*
+
 4. **Spatial Analysis** – *Spatial Autocorrelation, Local Moran's I, Cluster Analysis*
+
 5. **Linear Model** – *Ordinary Least Squares, Predicting 2015-19 Permits & Units*
+
 6. **Conclusions** – *Gentrification?*
 
 This project can explore many narratives involving permits, housing, and gentrification. But for this version, I will focus on understanding **Permits and Housing Units from 2015 to 2019**. This is an interesting period to study as the city will have already had waves of incoming investment and high-income workers from the booming technology industry. So Sections 3-5 will focus on understanding:
-* Where is housing being permitting the most?
-* Is there a changing demographic in those areas of higher development?
+
+-  Where is housing being permitting the most?
+
+-  Is there a changing demographic in those areas of higher development?
 
 -------------------------------
 
@@ -94,21 +102,54 @@ This project can explore many narratives involving permits, housing, and gentrif
 # Conclusion
 
 ## Overall
-Our project and model was able to predict a blurry picture of the Boulder County House Prices. Our model's errors were large (based on a 38% MAPE) and indicated there were unique spatial & price patterns of the errors. The spatial section highlighted that we under-estimated higher-value homes in the suburbs while over-estimating lower-value houses.
+The project -- through the visual analysis of Sections 2 & 3, the spatial analysis of Section 4, and the Linear Results of Section 5 -- shows evidence that new housing has been mainly added in block groups with:
+1. increases in median income, 
+2. decreases in the percent of renters,
+3. increases in white people, and
+4. have higher amounts of area dedicated to residential land.
 
-## Variables
-Initially, we assumed that relying on internal characteristics of the house would proide the majority of predicting accuracy. And it did so to an extent. By slightly engineering many of the internal variables (e.g, bathrooms adjusted, finished basement, HVAC, living area, lot size) did a quality job of providing the base prediction of price. 
+In the context of the housing shortage and affordability crisis, this is concerning as it suggests that:
+1. more long-term, low-income residents are being displaced, and 
+2. housing is being added to cater to high-income, white renters & those looking to buy homes. 
 
-The spatial section, however, highlighted that our external variables didn't account for the larger spatial trends effecting price. The external amenities and spatial variables we used (elementary school ranks, census demographics, in city) were either not significant enough to keep in the model or to remove the spatial errors (highlighted by lag & Moran's I). 
+So new homes aren't exactly relieving the shortage, but just jumbling up residents. There could be a case that new units, regardless of who they cater to, will open up spots elsewhere in the city. But this project did not focus enough on the 'filtering effect' or tracking *where* people are moving from and being displaced to.
 
-Our model's largest room for improvement is bringing in more external variables that could potentially explain higher priced homes in the suburbs. It would be beneficial to try and bring in more spatial comparisons of price based on neighborhoods.
+## Revisting the Gentrification Stages
+Reconsidering the 3 different methods of measuring gentrification, I could argue that the areas of the Tenderloin and Mission would fulfill Freeman's and Landis' criteria of gentrification. This is largely due to their models being focused primarily on large jumps in median income. I don't believe my project or model was organized in a way to answer all of the detailed criteria of the urban displacement model. 
 
-## Generalizability
-The difference between above-AMI & below-AMI errors highlights that our model is not generalizing predicts between two different areas. The scatter plots of errors (Figure 5) & spatial lag maps (Map 5) suggest that there are unaccounted spatial patterns in lower and higher cost homes.  
 
-## Conclusion
+## Improvements to the Project
+The difficulty of this project is that it could have been taken in many directions. I wanted to understand if housing units in the last 7 years are fueling displacement. I could have just focused on displacement. I could have focus specifically on permits. So it was difficult narrowing down to a  few questions
 
-Overall, I would not recommend Zillow to use our housing model. It was not accurate enough to predict Boulder County homes with certainty but not generalized enough to predict based on multiple regions. 
+Regarding the scope of this project that I gave myself, I feel that I could have improved the linear model through improved feature engineering and selection. But a more accurate linear model still wouldn't have made me 100% comfortable suggesting the new housing units are adding to displacement and not helping the shortage. 
 
+This subject matter is fairly complex and it will be very difficult to find the core problem of the housing crisis. Or suggest ways to improve it. 
 
 ----------------------------------
+
+## Bibliography
+
+1. Bogin, Alexander, William Doerner, and William Larson. 2019. “Local House Price Dynamics: New Indices and Stylized Facts.” Real Estate Economics 47 (2): 365–98. https://doi.org/10.1111/1540-6229.12233.
+2. Brown-Saracino, Japonica. 2017. “Explicating Divided Approaches to Gentrification and Growing Income Inequality.” Annual Review of Sociology 43 (1): 515–39. https://doi.org/10.1146/annurev-soc-060116-053427.
+3. Clay, Phillip L. 1979. Neighborhood Renewal: Middle-Class Resettlement and Incumbent Upgrading in American Neighborhoods. Lexington Books.
+4. Desmond, Matthew, and Kristin L. Perkins. 2016. “Housing and Household Instability.” Urban Affairs Review 52 (3): 421–36. https://doi.org/10.1177/1078087415589192.
+5. Dougherty, Conor. 2017. “The Great American Single-Family Home Problem.” The New York Times, December 1, 2017, sec. Business. https://www.nytimes.com/2017/12/01/business/economy/single-family-home.html.
+6. Egan, Ted. n.d. “The Economics of San Francisco Housing,” 22.
+7. Einstein, Katherine Levine. 2021. “The Privileged Few: How Exclusionary Zoning Amplifies the Advantaged and Blocks New Housing—and What We Can Do About It.” Urban Affairs Review 57 (1): 252–68. https://doi.org/10.1177/1078087419884644.
+8. Einstein, Katherine Levine, David M. Glick, and Maxwell Palmer. 2019. Neighborhood Defenders: Participatory Politics and America’s Housing Crisis. Cambridge: Cambridge University Press. https://doi.org/10.1017/9781108769495.
+9. Einstein, Katherine Levine, Maxwell Palmer, and David M. Glick. 2019. “Who Participates in Local Government? Evidence from Meeting Minutes.” Perspectives on Politics 17 (1): 28–46. https://doi.org/10.1017/S153759271800213X.
+10. Freeman, Lance. 2005. “Displacement or Succession?: Residential Mobility in Gentrifying Neighborhoods.” Urban Affairs Review 40 (4): 463–91. https://doi.org/10.1177/1078087404273341.
+11. Glaeser, Edward L., and Joseph Gyourko. 2002. “The Impact of Zoning on Housing Affordability.” Working Paper 8835. Working Paper Series. National Bureau of Economic Research. https://doi.org/10.3386/w8835.
+12. Hanratty, Maria. 2017. “Do Local Economic Conditions Affect Homelessness? Impact of Area Housing Market Factors, Unemployment, and Poverty on Community Homeless Rates.” Housing Policy Debate 27 (4): 640–55. https://doi.org/10.1080/10511482.2017.1282885.
+13. Humphries, John Eric, Nicholas S. Mader, Daniel I. Tannenbaum, and Winnie L. van Dijk. 2019. “Does Eviction Cause Poverty? Quasi-Experimental Evidence from Cook County, IL.” Working Paper 26139. Working Paper Series. National Bureau of Economic Research. https://doi.org/10.3386/w26139.
+14. Landis, John D. 2016. “Tracking and Explaining Neighborhood Socioeconomic Change in U.S. Metropolitan Areas Between 1990 and 2010.” Housing Policy Debate 26 (1): 2–52. https://doi.org/10.1080/10511482.2014.993677.
+15. McNee, Georgina, and Dorina Pojani. 2021. “NIMBYism as a Barrier to Housing and Social Mix in San Francisco.” Journal of Housing and the Built Environment, May. https://doi.org/10.1007/s10901-021-09857-6.
+16. O’Sullivan, Arthur. 2012. “Chapter 14: Why Is Housing Different?” In Urban Economics.
+17. Schaffner, Brian F., Jesse H. Rhodes, and Raymond J. La Raja. 2020. Hometown Inequality: Race, Class, and Representation in American Local Politics. Cambridge University Press.
+18. SF Rent Arbitration Board. 2022. “Eviction Notices Data.” DataSF. 2022. https://data.sfgov.org/Housing-and-Buildings/Eviction-Notices/5cei-gny5.
+19. Thomas, Tim, Karen Chapple, and Julia Greenberg. 2021. “SF Bay Area – Rent and Demographic Change Map.” 2021. https://www.urbandisplacement.org/maps/sf-bay-area-rent-and-demographic-change/.
+20. Thomas, Tim, Karen Chapple, and Julia Greenberg. 2021. “SF Bay Area – Gentrification and Displacement Map.” Accessed May 6, 2022. https://www.urbandisplacement.org/maps/sf-bay-area-gentrification-and-displacement/.
+21. Thomas, Tim, Anna Driscoll, Gabriela Picado Aguilar, Carson Hartman, Julia Greenberg, Alex Ramiller, Anna Cash, Miriam Zuk, and Karen Chapple. 2020. Urban-Displacement/Displacement-Typologies: Release 1.1 (version v1.1). Zenodo. https://doi.org/10.5281/ZENODO.4356684.
+22. Trounstine, Jessica. 2018. Segregation by Design: Local Politics and Inequality in American Cities. Cambridge University Press.
+23. US Census Bureau. 2020. “National, State, and County Housing Unit Totals: 2010-2019.” US Census Bureau.     https://www.census.gov/data/datasets/time-series/demo/popest/2010s-total-housing-units.html.
+

@@ -11,14 +11,11 @@ project_crs = st_crs('EPSG:7132')
 
   In this section, I will be importing in the dataset containing permits, housing units, and predicting data. This data was aggregated into Block Groups in a separate Python Jupyter Notebook *([which can be found here](https://github.com/CPLN-680-Spring-2022/Nelms_Alex_BuildingPermits/blob/main/scripts/python/sf_buildingpermit_import.ipynb))*. The Notebook provides more in-depth metadata and references to the data sources. Nonetheless, I will reference the sources of the data below. 
   
-Overall, the Block Group has 7 larger categories:
+Overall, the Block Group can be viewed in 4 larger categories:
 1. Building Permits (2000-19)
 2. Added Housing (2000-19)
-3. Evictions (2000-19)
-4. Demographic Metrics (1990-2018)
-5. Economic Metrics (1990-2018)
-6. Built Environment (2022)
-7. Land Use (2022)
+3. Demographic Metrics (1990-2018)
+4. Evictions (2000-19)
 
 I want to bring in alot of metrics for the initial analysis. But by the linear model, I will pair down to the most impactful & relevant metrics.
 
@@ -39,30 +36,129 @@ sf.data =
 
 ```
 
+To start, let's look at this map of San Francisco Building Permits by time period. With these maps, we can get a general idea of location and frequency of building permits that add in housing units. For throughout the years, permits are primarily located in the Eastern half of the city. Many blocks in the Western half of the city receive zero permits for 5 year periods. This is concerning as the development is focused in the Northeastern part of the city: the Downtown, the Tenderloin, and the Mission.
 
+*(I apologize for the lack of in-plot labels. My python label function WOULD NOT work)*
 
-```{r permit_visual echo=FALSE, out.width='100%'}
-knitr::include_graphics('./cropped-banner_efpt.jpg')
+```{r permit_visual, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_permits_year.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
 ```
 
-### Feature
+### Housing Units (2000-19)
 
-```{r vars_sales_lots}
+  The main focus of this project's analysis, approved housing units, has a sharper geographic contrast. Looking at the figure below, every year shows a distinct cluster of units around Northeastern San Francisco, *i.e. Downtown, Tenderloin, SOMA*.
+
+  Between 2000 and 2019, the added units seems less dispersed around the city. In the 2000-04 period, a majority of block groups have at least 1 unit. In 2015-19, it appears that most of the development is concentrated in the Eastern area. But the core of the cluster (Downtown) appears to be expanding just to the neighborhoods just outside (Mission, Tenderloin).
 
 
+```{r units_visual_year, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_units_year.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
 ```
 
-### Feature
+The figure below depicts Housing Units, Permits, Average Units per Permit, and Units per Sq. Mile for 2015-19. By putting these plots together, development appears to stay primarily in the Northeastern corner. 
 
-``` {r vars_sales_engineer}
+```{r visual_permit_house, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_house_permit.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
+```
+We will evaluate this clustering more with Spatial Autocorrelation in Section 4. But for now, it appears to be concerning that new housing is not spread throughout the city. If new units have only been added to one area, that area will witness constant physical and residential change. Even though San Francisco does not have a lot of land area, it appears that many areas of the city are not open to development.
 
+### Demographic Metrics (2000-19)
+
+To better understand more about the areas of more development, lets pull in metrics that describe the resident's of the area.
+
+#### Renters
+The next figure locates where a higher share of renters are located in the city. Specifically, renters are primarily located in the Northeastern portion of the city. The Marina & North Beach to the north. Tenderloin, Downtown, SOMA, & Mission in the central, North Eastern area. This highlights that the higher amounts of housing developments happen in areas of higher shares of renters. 
+
+```{r evict_rent_pct, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_rent_occ.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
 ```
 
+This can be seen as good *and* bad. Renters have more units to rent from. But the new developments have to be place *somewhere*. So the older apartments, that are typically lower rents, are not replaced by expensive market-rate homes.
 
-## Other Dataset
+In the next figure, it shows the *change* in renters from 2010 to 2018. Just in 8 years, many blocks have larger than a 50% change in their share of renters. So blue areas saw a decrease in renters, but an increase in owner-occupied units. Likely in a 'condo-conversion' situation, where apartments are evicted so they can be sold as individual properties.   
 
-### City Boundary
-``` {r vars_boundaries}
+```{r visual_rent_change, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_rent_occ_ch.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
+```
+
+What is concerning is that the areas of a 50% decrease in the share of renters are those areas with massive developments. So there is new developments, but they are condos. With less rental units on the market, there is more competition over the remaining units. Driving up prices.
+
+#### Median Household Income (1990-2018)
+
+The following plot digs more into the income make-up of the city. The plots depict Median Household Income, but adjusted for 2018 USD. It appears that the higher income areas have typically been outside the Downtown area. Income slightly drastically increases from 1990 & 2000 -- maybe due to the 1990's tech bubble. But the drastic increase is from 2000 to 2018. The last map in the figure highlights the changes, and appears that almost all of the city saw an increase in median household income. 
+
+
+```{r visual_income, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_medinc.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
+```
+An insane statistic is that the city's adjusted median household income in 1990 was \$57,956 . . . but is \$110,060 in 2018. The household income DOUBLED, even considering an adjustment for inflation. The Tenderloin - the lower-income, heart of downtown - the tenderloin, appears to only increase a small margin. But the area is surrounded by housing growth and rising income.
+
+#### Change of Low-Income People of Color
+
+The next figure shows the change in Low-Income People of Color. This is a more niche metric, but it highlights the population that suffers the most from displacement. The map highlights that the downtown area has a mixed bag of loss of PoC and Gain. 
+
+Just outside the downtown area, there is more loss of PoC. This could be due to the downtown area already seeing a large amount of displacement. So the next area for displacement is immediately outside of it. 
+
+```{r visual_lowinc_poc, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_poc_li.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
+```
+
+#### Change of White People
+
+The next figure contrasts with the previous plot. The downtown areas of higher development is also areas of more White people moving in. 
+
+```{r visual_white, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_wht.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
+```
+
+### Evictions (2000-19)
+
+  One immediate understanding of residential change is looking at the city's evictions. The plot below depicts all of the city's evictions by year. The evictions primarily are located in the center of the Northeast area -- where the higher share of development, renters, and low-income residents are. This does make sense: more renters mean more of a potential for eviction. But if we recall, there are more areas that have higher shares of renters that aren't the main block groups of the Tenderloin and Northern Mission district.
+
+OVer time, it appears that there is less evictions? There was a spike of evictions in the 2000-04 period. This could suggest there was a surge of development, which could warrant more evictions. 
+
+```{r visual_evict, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_evict.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
+```
+Let's breakdown the evictions by type in order to get a better idea of the pattern. The types breakdown by 
+* Renters Breaching the Lease - *e.g. illegal roommate*
+* Owner Changing the Housing Use - *e.g. Condo Conversion*
+* Major Renovations
+* Failure of Renter Payment
+
+The maps highlight where each is located between 2000 to 2019. The most common type of eviction appears to be a 'breach of lease'. What's interesting, is that breach of lease is evenly spread across the city. But evictions due to a change of use, a major renovation, and a failure to pay have higher concentrations in the Northeast or central area.
+
+```{r evict_visual_type, echo=FALSE, out.width='100%', keep=TRUE,, results=TRUE,   messages=FALSE}
+pic_path = 'sf_evict_type.png'
+pic_path = paste0(DIR, "/visuals/", pic_path)
+knitr::include_graphics(pic_path)
+```
+## Data Conclusion
+
+  There are other metrics that were not visualized, but the previous maps highlight the larger, narrative metrics. The following sections will work through some of the other metrics before placing them in the model. 
+  
+  To conclude our current findings, the downtown area witnesses the highest share of permitting and housing -- even when weighing them. At the same time, the downtown area has the highest share of renters, long-term low income residents, and the greatest increase of white people. It is concerning that housing is mainly being added to this area and, to a larger extent, not elsewhere in the city.
+
+
+``` {r vars_boundaries, include=FALSE}
 data_path =
    paste(DIR, "/data/raw/georeference/sf_neighborhoods.geojson", sep="")
 sf.nhood =
@@ -240,19 +336,10 @@ plot_limits = function(
       crs = st_crs(data)
   ))}
 
-
-ggplot() +
-  #geom_sf(data=sf.nhood, aes(fill=rank)) + 
-  #geom_bound() +
-  geom_quad() + 
-  geom_nhood(ranks=c(1,2, 3)) +
-  plotTheme()
-
 ```
 
-### BART
 
-```{r 1A1_transit_import, warning = FALSE, message = FALSE}
+```{r 1A1_transit_import, include=FALSE}
 
 DATA_DIR = 'C:/Users/nelms/Documents/Penn/2021 Fall/MUSA-508/Files'
 
@@ -309,7 +396,7 @@ BART.routes = st_intersection(BART.routes, st_buffer(st_union(sf.data),5280*.5))
 
 ```
 
-```{r 1A2_Buffers}
+```{r 1A2_Buffers, include=FALSE}
 
 buffer_distance = .5
 
@@ -444,7 +531,7 @@ buffer_labels =
 #buffer_breaks = c(buffer_distances,buffer_max_distance+buffer_distance)
 
 ```
-```{r centroid}
+```{r centroid, include=FALSE}
 
 # GET CENTROIDS IN EAST BAY
 tracts.all.centroid =
@@ -488,19 +575,7 @@ sf.data =
 ```
 
 
-## Managing Data
-
-Before setting our data sets off for exploration and modelling, we will organize our variables, remove outliers, and selecting which houses to predict for.
-
-
-Looking at the filters, we are only removing around 174 housing sales observations out of the total 11,264 (1.5 %). 
-
-### Predicting Dataset
-
-I also remove non-residential (or very low) block groups from the predicting dataset. My eventual predictions will be skewed if I leave in areas that cannot receive building permits.
-
-
-``` {r vars_partition}
+``` {r vars_partition, include=FALSE}
 
 vars = colnames(sf.data)
 

@@ -1,0 +1,49 @@
+import_libraries	.Random.seed
+import_functions	acre	ceiling_10	ceiling_5	ceiling_n	count_format	count_unique	geom_text_sf	get_labels	m	mapTheme	mile	mutate_by	plotTheme	proportion_format	sf_to_labels	sqmile	str_replace_vector
+binary_functions	count_format	round_str	round_thresh
+vars_setup	DIR	project_crs
+vars_permits	data_path	sf.data
+permit_visual	pic_path
+units_visual_year	pic_path
+visual_permit_house	pic_path
+evict_rent_pct	pic_path
+visual_rent_change	pic_path
+visual_income	pic_path
+visual_lowinc_poc	pic_path
+visual_white	pic_path
+visual_evict	pic_path
+evict_visual_type	pic_path
+vars_boundaries	data_path	geom_bound	geom_dash	geom_nhood	geom_quad	merge_geom	plot_limits	rank1	rank2	remove_nhood	replace_word	sf.boundary	sf.nhood	sf.quad	westfix
+1A1_transit_import	BART.routes	BART.stops	CA_crs	DATA_DIR	route_path	stop_path
+1A2_Buffers	BART.buffers	BARTstop_EBboundary_distances	buffer_breaks	buffer_distance	buffer_distances	buffer_labels	buffer_max_distance	max_min_BART_SF_dist	min_point_distances	multiringbuffers_byrow	sf.coords
+centroid	min_BART_dist_find	sf.data	tract_bart_distances	tracts.all.centroid
+vars_partition	non_res_geoid10	sf.predict	var.dv	var.ivs.all	vars	vars.admin
+plot_predict_scatplot	dependent_variable	dv_lab	fig_num	n_max	plot_colors	plot_scats	scat_labs	scat_vars	second_max	var.dvs.plot	vars.ivs.cont	vars.ivs.disc	ylim	ylim_num
+scat_plot1	
+scat_plot2	
+scat_plot3	
+scat_plot4	
+corr_cont_pearson	fig_num	ggcorr_full
+plot_corr	len	len_half	plot	remove_col	sf.cont	var.dvs.plot	vars.ivs.cont_fin	vars.ivs.disc_fin
+pear_cont	plot	sf.cont
+spat_intro	sf.predict.weights	st_weights
+global_morans_i	fig_num	fig_title	plot_moransI
+local_morans_i	cols_addprefix	focus_sf.permits.localmorans	focus_sf.units.localmorans	get_local_morans	plot_localmorans_all	pval	rename_addprefix	st_local_morans	var.dvs.plot
+setup_comp	plot_localmorans_hotspot	sf.permits.hotspots	sf.units.hotspots
+LISA_permits_fig	fig_num	fig_title
+LISA_permits_decade	fig_num	fig_title
+LISA_units	fig_num	fig_title
+unts	hot_json_path	web_crs
+LISA_units_decade	fig_num	fig_title
+setup_clustcomp	focus.col	focus.vars	sf.predict
+setup_function	df_corr_data	get_corr_data
+clustcomp_permits_mww	bin_df	bin_FALSE	bin_test	bin_TRUE	cont_var	cont_vars	doff	focus_df	housing.cont.MWW	housing.cont.ttest	mean_FALSE	mean_TRUE	new_cols	pval	tab_num	title	tstat	ttest_df	var.dv	var.ivs	.index_cache/html/clustcomp_permits_mww_ea8071ded36fad6ec3e5ec03c740b5f1_meta
+clustcomp_units_mww	bin_df	bin_FALSE	bin_test	bin_TRUE	cont_var	cont_vars	doff	focus_df	housing.cont.MWW	housing.cont.ttest	mean_FALSE	mean_TRUE	new_cols	pval	tab_num	title	tstat	ttest_df	var.dv	var.ivs	.index_cache/html/clustcomp_units_mww_03f3c2c85d87d935045f9c3e737a7b48_meta
+setup_train_test_partition	inTrain	select_iv	select_v	sf.test	sf.train	var.dv	var.ivs
+setup_train_lm	fm_equation	lm.train	var.dv	var.ivs.str
+table_train_summ	format_nums	lm.train.summ	tab_num	.index_cache/html/table_train_summ_ccab4468e1dba7a3aa69d7bb9fec2c1d_meta
+table_train_err	tab_num	title	.index_cache/html/table_train_err_194a6d6b7bc49f5e0c3dfbae121bbbbd_meta
+setup_all_predict	sf.predict
+plot_train_lm	ape_breaks	fig_num	geom_vline_lim	m	MAE_lm_fit	ME_1	ME_2	negxmoney_breaks	pe_breaks	percent_formatter	title	xmoney_breaks	ymoney_breaks
+plot_all_predict_real	fig_num	line_min	title
+map_predictions	map_num	title	Var1_map	Var2_map
